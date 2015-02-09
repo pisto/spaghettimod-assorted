@@ -51,8 +51,7 @@ local function pingline(ci, line)
   local delta = ping - pingdata.mean
   pingdata.mean = pingdata.mean + delta / pingdata.tot
   pingdata.m2 = pingdata.m2 + delta * (ping - pingdata.mean)
-  if seq < pingdata.seenseq then pingdata.lost = pingdata.lost - 1 return end
-  pingdata.lost, pingdata.seenseq = seq - pingdata.seenseq - 1, seq
+  pingdata.seenseq = seq
 end
 spaghetti.addhook(server.N_CLIENTPING, L"if _.ci.extra.proxyscan then _.ci.extra.proxyscan.ping.reported = _.ping end", true)
 
@@ -61,7 +60,7 @@ spaghetti.addhook("connected", function(info)
   info.ci.extra.proxyscan = { pipes = {
     nmap = newpipe(("nmap -n -oG - -Pn -p %s %s"):format(table.concat(proxyports, ","), ip), nmapline),
     ping = newpipe("ping -On " .. ip, pingline),
-  }, foundports = {}, ping = { tot = 0, mean = 0, m2 = 0, seenseq = 0, lost = 0 }}
+  }, foundports = {}, ping = { tot = 0, mean = 0, m2 = 0, seenseq = 0 }}
   playermsg("The server will now run a \f3proxy check\f7 on your host. For more information type \f0#proxyscan", info.ci)
 end)
 local function closepipes(ci)
@@ -99,7 +98,7 @@ require"std.commands".add("proxyscan", function(info)
   if ci.privilege < server.PRIV_AUTH and ci.clientnum ~= tci.ownernum then playermsg("You lack access to run this command.", ci) return end
   local tci, peer = engine.getclientinfo(tci.ownernum), engine.getclientpeer(tci.ownernum)
   local ping = tci.extra.proxyscan.ping
-  local loss, icmpmean, icmpstd = ping.lost / ping.seenseq, pingstats(tci)
+  local loss, icmpmean, icmpstd = 1 - ping.tot / ping.seenseq, pingstats(tci)
   playermsg(("proxyscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
   local pipes, ports = ci.extra.proxyscan.pipes, map.lp(L"_1 .. '(' .. _2 .. ')'", ci.extra.proxyscan.foundports)
   if pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
