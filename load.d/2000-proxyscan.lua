@@ -78,7 +78,7 @@ spaghetti.later(1000, function() for ci in iterators.clients() do
       local data = p.pipe and fs.readsome(p.pipe)
       if not data then killpipe(p) proxyscan.pipes[f] = nil goto nextpipe end
       p.buff = p.buff .. data
-    until data ~= ""
+    until data == ""
     p.buff = p.buff:gsub("[^\n]*\n", function(line) p.handler(ci, line) return "" end)
     :: nextpipe ::
   end
