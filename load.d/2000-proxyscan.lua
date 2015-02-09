@@ -108,7 +108,7 @@ require"std.commands".add("proxyscan", function(info)
   local proxyscan = tci.extra.proxyscan
   local ping = proxyscan.ping
   local loss, icmpmean, icmpstd = 1 - ping.tot / ping.seenseq, pingstats(tci)
-  playermsg(("proxyscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
+  playermsg(("proxyscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(tci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
   local pipes, ports = proxyscan.pipes, map.lp(L"_1 .. '(' .. _2 .. ')'", proxyscan.foundports)
   if proxyscan.nmapdelayed or pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
   return #ports > 0 and playermsg("\tports: " .. table.concat(ports, ", "), ci)
