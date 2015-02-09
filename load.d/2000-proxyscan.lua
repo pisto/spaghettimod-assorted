@@ -72,10 +72,11 @@ local function closepipes(ci)
   ci.extra.proxyscan.pipes = {}
 end
 spaghetti.addhook("clientdisconnect", function(info)
+  if not info.ci.extra.proxyscan then return end
   closepipes(info.ci)
   return info.ci.extra.proxyscan.nmapdelayed and spaghetti.cancel(info.ci.extra.proxyscan.nmapdelayed)
 end)
-spaghetti.addhook("shuttingdown", function() for ci in iterators.clients() do closepipes(ci) end end)
+spaghetti.addhook("shuttingdown", function() for ci in iterators.clients() do if ci.extra.proxyscan then closepipes(ci) end end end)
 
 spaghetti.later(1000, function() for ci in iterators.clients() do
   local proxyscan = ci.extra.proxyscan
