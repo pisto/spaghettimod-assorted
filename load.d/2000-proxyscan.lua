@@ -92,7 +92,7 @@ require"std.commands".add("proxyscan", function(info)
   if not tci then playermsg("Please specify a valid client number.", ci) return end
   tci = engine.getclientinfo(tci)
   if not tci then playermsg("Cannot find client.", ci) return end
-  local tci, peer = engine.getclientinfo(tci.ownernum), engine.getclientpeer(ci.ownernum)
+  local tci, peer = engine.getclientinfo(tci.ownernum), engine.getclientpeer(tci.ownernum)
   local ping = tci.extra.proxyscan.ping
   local loss, icmpmean, icmpstd = ping.lost / ping.seenseq, pingstats(tci)
   playermsg(("proxiscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
