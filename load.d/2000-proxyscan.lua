@@ -105,10 +105,11 @@ require"std.commands".add("proxyscan", function(info)
   if not tci then playermsg("Cannot find client.", ci) return end
   if ci.privilege < server.PRIV_AUTH and ci.clientnum ~= tci.ownernum then playermsg("You lack access to run this command.", ci) return end
   local tci, peer = engine.getclientinfo(tci.ownernum), engine.getclientpeer(tci.ownernum)
-  local ping = tci.extra.proxyscan.ping
+  local proxyscan = tci.extra.proxyscan
+  local ping = proxyscan.ping
   local loss, icmpmean, icmpstd = 1 - ping.tot / ping.seenseq, pingstats(tci)
   playermsg(("proxyscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
-  local pipes, ports = ci.extra.proxyscan.pipes, map.lp(L"_1 .. '(' .. _2 .. ')'", ci.extra.proxyscan.foundports)
-  if ci.extra.proxyscan.nmapdelayed or pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
+  local pipes, ports = proxyscan.pipes, map.lp(L"_1 .. '(' .. _2 .. ')'", proxyscan.foundports)
+  if proxyscan.nmapdelayed or pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
   return #ports > 0 and playermsg("\tports: " .. table.concat(ports, ", "), ci)
 end, "Usage: #proxyscan [cn]: show proxyscan results for client, or no arguments for more information on the scan")
