@@ -100,8 +100,8 @@ require"std.commands".add("proxyscan", function(info)
   local tci, peer = engine.getclientinfo(tci.ownernum), engine.getclientpeer(tci.ownernum)
   local ping = tci.extra.proxyscan.ping
   local loss, icmpmean, icmpstd = ping.lost / ping.seenseq, pingstats(tci)
-  playermsg(("proxiscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
-  local ports = ci.extra.proxyscan.foundports
-  if not next(ports) then return end
-  playermsg("\tports: " .. table.concat(map.lp(L"_1 .. '(' .. _2 .. ')'", ports), ", "), ci)
-end, "Usage: #proxyscan <cn>: show proxyscan results")
+  playermsg(("proxyscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
+  local pipes, ports = ci.extra.proxyscan.pipes, map.lp(L"_1 .. '(' .. _2 .. ')'", ci.extra.proxyscan.foundports)
+  if pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
+  return #ports > 0 and playermsg("\tports: " .. table.concat(ports, ", "), ci)
+end, "Usage: #proxyscan [cn]: show proxyscan results for client, or no arguments for more information on the scan")
