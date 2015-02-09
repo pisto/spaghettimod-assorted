@@ -25,13 +25,11 @@ local function killpipe(pipe)
   pipe.pipe:close()
 end
 
-local nmapline
-nmapline = function(ci, line)
+local function nmapline(ci, line)
   local proxyscan = ci.extra.proxyscan
   for port, service in line:gmatch(" (%d+)/open/tcp//([^/]*)") do
     port = tonumber(port)
     if not proxyscan.foundports[port] then
-      if not next(proxyscan.foundports) then proxyscan.pipes.nmap2 = newpipe("nmap -n -oG - -Pn " .. ipstring(ci), nmapline) end
       proxyscan.foundports[port] = service
       engine.writelog(("nmap: %s (%d) %s port %d (%s)"):format(ci.name, ci.clientnum, ipstring(ci), port, service))
     end
@@ -76,11 +74,13 @@ spaghetti.later(1000, function() for ci in iterators.clients() do
   for f, p in pairs(proxyscan.pipes) do
     repeat
       local data = p.pipe and fs.readsome(p.pipe)
-      if not data then killpipe(p) proxyscan.pipes[f] = nil goto nextpipe end
+      if not data then killpipe(p) proxyscan.pipes[f] = nil break end
       p.buff = p.buff .. data
     until data == ""
     p.buff = p.buff:gsub("[^\n]*\n", function(line) p.handler(ci, line) return "" end)
-    :: nextpipe ::
+  end
+  if next(proxyscan.foundports) and not proxyscan.exendednmap then
+    proxyscan.exendednmap, proxyscan.pipes.nmap2 = true, newpipe("nmap -n -oG - -Pn " .. ipstring(ci), nmapline)
   end
 end end, true)
 
