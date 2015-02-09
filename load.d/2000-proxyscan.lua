@@ -62,6 +62,7 @@ spaghetti.addhook("connected", function(info)
     nmap = newpipe(("nmap -n -oG - -Pn -p %s %s"):format(table.concat(proxyports, ","), ip), nmapline),
     ping = newpipe("ping -On " .. ip, pingline),
   }, foundports = {}, ping = { tot = 0, mean = 0, m2 = 0, seenseq = 0, lost = 0 }}
+  playermsg("The server will now run a \f3proxy check\f7 on your host. For more information type \f0#proxyscan", info.ci)
 end)
 local function closepipes(ci)
   ci = ci.ci or ci
@@ -87,11 +88,15 @@ end end, true)
 local round = L"math.modf(_1 * 10) / 10"
 require"std.commands".add("proxyscan", function(info)
   local ci = info.ci
-  if ci.privilege < server.PRIV_AUTH then playermsg("You lack access to this command.", ci) return end
+  if info.args == "" then
+    playermsg("The proxy scan checks for common proxy/server open ports on your host, and will ping it with ICMP packets for the duration of your stay. The port scan can be interrupted by leaving the server. When a port is found no action is taken but the port is logged. No attempt is made to determine the nature of the service running on the port. The results can be accessed with #proxyscan <cn> by yourself and authenticated masters. The code of this can is available at \f0pisto.horse/proxyscan", ci)
+    return
+  end
   local tci = tonumber(info.args)
   if not tci then playermsg("Please specify a valid client number.", ci) return end
   tci = engine.getclientinfo(tci)
   if not tci then playermsg("Cannot find client.", ci) return end
+  if ci.privilege < server.PRIV_AUTH and ci.clientnum ~= tci.ownernum then playermsg("You lack access to run this command.", ci) return end
   local tci, peer = engine.getclientinfo(tci.ownernum), engine.getclientpeer(tci.ownernum)
   local ping = tci.extra.proxyscan.ping
   local loss, icmpmean, icmpstd = ping.lost / ping.seenseq, pingstats(tci)
