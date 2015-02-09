@@ -55,18 +55,26 @@ spaghetti.addhook(server.N_CLIENTPING, L"if _.ci.extra.proxyscan then _.ci.extra
 
 spaghetti.addhook("connected", function(info)
   local ip = ipstring(info.ci)
-  info.ci.extra.proxyscan = { pipes = {
-    nmap = newpipe(("nmap -n -oG - -Pn -p %s %s"):format(table.concat(proxyports, ","), ip), nmapline),
-    ping = newpipe("ping -On " .. ip, pingline),
-  }, foundports = {}, ping = { tot = 0, mean = 0, m2 = 0, seenseq = 0 }}
-  playermsg("The server will now run a \f3proxy check\f7 on your host. For more information type \f0#proxyscan", info.ci)
+  local proxyscan
+  proxyscan = {
+    foundports = {}, ping = { tot = 0, mean = 0, m2 = 0, seenseq = 0 },
+    pipes = { ping = newpipe("ping -On " .. ip, pingline) },
+    nmapdelayed = spaghetti.later(15000, function()
+      proxyscan.pipes.nmap = newpipe(("nmap -n -oG - -Pn -p %s %s"):format(table.concat(proxyports, ","), ip), nmapline)
+      proxyscan.nmapdelayed = nil
+    end)
+  }
+  info.ci.extra.proxyscan = proxyscan
+  playermsg("The server will now run a \f3proxy check\f7 on your host. \f2Disconnect within 15 seconds if you do not agree to be scanned for open ports\f7. For more information type \f0#proxyscan", info.ci)
 end)
 local function closepipes(ci)
-  ci = ci.ci or ci
   for _, p in pairs(ci.extra.proxyscan.pipes) do killpipe(p) end
   ci.extra.proxyscan.pipes = {}
 end
-spaghetti.addhook("clientdisconnect", closepipes)
+spaghetti.addhook("clientdisconnect", function(info)
+  closepipes(info.ci)
+  return info.ci.extra.proxyscan.nmapdelayed and spaghetti.cancel(info.ci.extra.proxyscan.nmapdelayed)
+end)
 spaghetti.addhook("shuttingdown", function() for ci in iterators.clients() do closepipes(ci) end end)
 
 spaghetti.later(1000, function() for ci in iterators.clients() do
@@ -88,7 +96,7 @@ local round = L"math.modf(_1 * 10) / 10"
 require"std.commands".add("proxyscan", function(info)
   local ci = info.ci
   if info.args == "" then
-    playermsg("The proxy scan checks for common proxy/server open ports on your host, and will ping it with ICMP packets for the duration of your stay. The port scan can be interrupted by leaving the server. When a port is found no action is taken but the port is logged. No attempt is made to determine the nature of the service running on the port. The results can be accessed with #proxyscan <cn> by yourself and authenticated masters. The code of this can is available at \f0pisto.horse/proxyscan", ci)
+    playermsg("The proxy scan checks for common proxy/server open ports on your host, and will ping it with ICMP packets for the duration of your stay. The port scan can be interrupted by leaving the server. When a port is found no action is taken but the port is logged. No attempt is made to determine the nature of the service running on the port. The results can be accessed with #proxyscan <cn> by yourself and authenticated masters. The code of this scan is available at \f0pisto.horse/proxyscan", ci)
     return
   end
   local tci = tonumber(info.args)
@@ -101,6 +109,6 @@ require"std.commands".add("proxyscan", function(info)
   local loss, icmpmean, icmpstd = 1 - ping.tot / ping.seenseq, pingstats(tci)
   playermsg(("proxyscan %s:\n\tping: reported %s enetping %d +- %d icmping %s +- %s loss %s"):format(server.colorname(ci, nil), ping.reported or "N/A", peer.roundTripTime, peer.roundTripTimeVariance, icmpmean and round(icmpmean) or "N/A", icmpstd and round(icmpstd) or "N/A", loss == loss and round(100 * loss) .. '%' or "N/A"), ci)
   local pipes, ports = ci.extra.proxyscan.pipes, map.lp(L"_1 .. '(' .. _2 .. ')'", ci.extra.proxyscan.foundports)
-  if pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
+  if ci.extra.proxyscan.nmapdelayed or pipes.nmap or pipes.nmap2 then table.insert(ports, 1, "<pending>") end
   return #ports > 0 and playermsg("\tports: " .. table.concat(ports, ", "), ci)
 end, "Usage: #proxyscan [cn]: show proxyscan results for client, or no arguments for more information on the scan")
