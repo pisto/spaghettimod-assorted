@@ -148,11 +148,12 @@ local function changeteam(ci, team, refresh)
   team = engine.filtertext(team, false):sub(1, server.MAXTEAMLEN)
   if team ~= "good" and team ~= "evil" or (ci.team == team and not refresh) then return end
   ci.team = team
-  resetflag(ci)
   local p = putf({10, r = 1})
   for ci in iterators.all() do putf(p, server.N_SETTEAM, ci.clientnum, team, -1) end
   engine.sendpacket(ci.clientnum, 1, p:finalize(), -1)
-  return refresh or respawn(ci)
+  if refresh then return end
+  resetflag(ci)
+  respawn(ci)
 end
 
 spaghetti.addhook(server.N_SETTEAM, function(info)
