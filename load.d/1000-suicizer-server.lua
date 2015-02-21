@@ -40,15 +40,15 @@ cs.serverdesc = "Suicizer tests"
 cs.lockmaprotation = 2
 cs.maprotationreset()
 
-local zombiemaps = map.f(I, ("abbey akroseum alithia arabic asgard asteroids c_egypt c_valley campo capture_night caribbean collusion core_refuge core_transfer corruption cwcastle damnation dirtndust donya duomo dust2 eternal_valley evilness face-capture fb_capture fc3 fc4 fc5 forge frostbyte hades hallo haste hidden infamy killcore3 kopenhagen lostinspace mbt12 mercury monastery nevil_c nitro nmp4 nmp8 nmp9 nucleus ogrosupply paradigm ph-capture reissen relic river_c serenity snapper_rocks spcr subterra suburb tempest tortuga turbulence twinforts urban_c valhalla venice xenon"):gmatch("[^ ]+"))
-for i = 2, #zombiemaps do
+local suicizermaps = map.f(I, ("abbey akroseum alithia arabic asgard asteroids c_egypt c_valley campo capture_night caribbean collusion core_refuge core_transfer corruption cwcastle damnation dirtndust donya duomo dust2 eternal_valley evilness face-capture fb_capture fc3 fc4 fc5 forge frostbyte hades hallo haste hidden infamy killcore3 kopenhagen lostinspace mbt12 mercury monastery nevil_c nitro nmp4 nmp8 nmp9 nucleus ogrosupply paradigm ph-capture reissen relic river_c serenity snapper_rocks spcr subterra suburb tempest tortuga turbulence twinforts urban_c valhalla venice xenon"):gmatch("[^ ]+"))
+for i = 2, #suicizermaps do
   local j = math.random(i)
-  local s = zombiemaps[j]
-  zombiemaps[j] = zombiemaps[i]
-  zombiemaps[i] = s
+  local s = suicizermaps[j]
+  suicizermaps[j] = suicizermaps[i]
+  suicizermaps[i] = s
 end
 
-cs.maprotation("capture", table.concat(zombiemaps, " "))
+cs.maprotation("capture", table.concat(suicizermaps, " "))
 cs.publicserver = 1
 spaghetti.addhook(server.N_MAPVOTE, function(info)
   if info.skip or info.ci.privilege > 0 or info.text ~= server.smapname then return end
@@ -167,7 +167,7 @@ spaghetti.addhook(server.N_TEXT, function(info)
   local tellcheatcmd = info.ci.extra.tellcheatcmd or tb(1/30000, 1)
   info.ci.extra.tellcheatcmd = tellcheatcmd
   if not tellcheatcmd() then return end
-  playermsg("\f2Problems with a cheater? Please use \f3#cheater [cn|name]\f2, and operators will look into the situation!\nYou can report zombies too, the controlling client will be reported.", info.ci)
+  playermsg("\f2Problems with a cheater? Please use \f3#cheater [cn|name]\f2, and operators will look into the situation!\nYou can report bots too, the controlling client will be reported.", info.ci)
   sound(info.ci, server.S_HIT, true) sound(info.ci, server.S_HIT, true)
 end)
 
