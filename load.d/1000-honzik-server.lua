@@ -77,8 +77,10 @@ spaghetti.addhook(server.N_SUICIDE, function(info)
   respawn(info.ci)
 end)
 
+
 --flag logic
 
+--switch spawnpoints, keep only the nearest
 local ents, vec3 = require"std.ents", require"utils.vec3"
 spaghetti.addhook("entsloaded", function()
   local teamflags = map.mf(function(i, _, ment)
@@ -100,7 +102,7 @@ spaghetti.addhook("entsloaded", function()
     ents.editent(i, server.PLAYERSTART, ment.o, ment.attr1, 3 - ment.attr2)
   end
 end)
-spaghetti.addhook("connected", L"_.ci.state.state ~= engine.CS_SPECTATOR and server.sendspawn(_.ci)")
+spaghetti.addhook("connected", L"_.ci.state.state ~= engine.CS_SPECTATOR and server.sendspawn(_.ci)") --fixup for spawn on connect
 
 local function resetflag(ci)
   if not ci.extra.flag then return end
@@ -117,7 +119,10 @@ spaghetti.addhook(server.N_TAKEFLAG, suppress)
 spaghetti.addhook(server.N_TRYDROPFLAG, suppress)
 
 
---hack the scoreboard to show flagrun time
+--[[
+  hack the scoreboard to show flagrun time. on server everyone is good, client sees all in his own team.
+  Use flags to enforce order and show best run millis as frags
+]]--
 
 spaghetti.addhook("autoteam", function(info)
   info.skip = true
@@ -168,8 +173,9 @@ spaghetti.addhook("changemap", function()
 end)
 
 
---ghost mode
+-- ghost mode: force players to be in CS_SPAWN state, attach an entity without collision box to their position
 
+--prevent accidental (?) damage
 spaghetti.addhook("dodamage", function(info) info.skip = info.target.clientnum ~= info.actor.clientnum end)
 spaghetti.addhook("damageeffects", function(info)
   if info.target.clientnum == info.actor.clientnum then return end
@@ -177,25 +183,37 @@ spaghetti.addhook("damageeffects", function(info)
   push.x, push.y, push.z = 0, 0, 0
 end)
 
-local spectators, emptypos = {}, {buf = ('\0'):rep(12)}
+local spectators, emptypos = {}, {buf = ('\0'):rep(14)}
 
-spaghetti.addhook("connected", function(info)
-  if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true
-  else for ci in iterators.players() do if ci.clientnum ~= info.ci.clientnum then
+local function disappearothers(viewer)
+  for ci in iterators.players() do if ci.clientnum ~= viewer.clientnum then
     local p = putf({ 30, r = 1}, server.N_SPAWN)
     server.sendstate(ci.state, p)
-    engine.sendpacket(info.ci.clientnum, 1, n_client(p, ci):finalize(), -1)
-  end end end
+    engine.sendpacket(viewer.clientnum, 1, n_client(p, ci):finalize(), -1)
+  end end
+end
+
+spaghetti.addhook("connected", function(info)
+  if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true return end
+  disappearothers(info.ci)
 end)
 
 spaghetti.addhook("specstate", function(info)
-  if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true
-  else
-    spectators[info.ci.clientnum] = nil
-    for ci in iterators.players() do
-      engine.sendpacket(info.ci.clientnum, 0, putf({13, r = 1}, server.N_POS, {uint = ci.clientnum}, emptypos):finalize(), -1)
-    end
-  end
+  if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true return end
+  spectators[info.ci.clientnum] = nil
+  --clear the virtual position of players so sounds do not get played at random locations
+  local p
+  for ci in iterators.players() do if ci.clientnum ~= info.ci.clientnum then
+    p = putf(p or {13, r = 1}, server.N_POS, {uint = ci.clientnum}, emptypos)
+  end end
+  if not p then return end
+  engine.sendpacket(info.ci.clientnum, 0, p:finalize(), -1)
+  --need to delay the disappear, because there's no way to ensure order between N_POS and N_SPAWN
+  local ciuuid = info.ci.extra.uuid
+  spaghetti.later(500, function()
+    local ci = uuid.find(ciuuid)
+    return ci and disappearothers(ci)
+  end)
 end)
 
 spaghetti.addhook("worldstate_pos", function(info)
