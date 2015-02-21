@@ -63,7 +63,7 @@ local ctf, putf, sound, iterators, n_client = server.ctfmode, require"std.putf",
 require"std.notalive"
 
 spaghetti.addhook(server.N_ADDBOT, L"_.skip = true")
-local hackscoreaboard, attachflagghost, removeflagghost
+local calcscoreboard, attachflagghost, removeflagghost
 
 --never dead
 local function respawn(ci)
@@ -91,7 +91,7 @@ spaghetti.addhook("entsloaded", function()
     local flag = teamflags[ment.attr2]
     if flag then
       local dist = flag.o:dist(ment.o)
-      if dist < flag.nearestdist then
+      if dist > 30 and dist < flag.nearestdist then
         if flag.nearesti then ents.delent(flag.nearesti) end
         flag.nearestdist, flag.nearesti = dist, i
       else ents.delent(i) end
@@ -128,7 +128,7 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
     removeflagghost(info.ci)
     if (info.ci.extra.bestrun or 1/0) > elapsed then
       info.ci.extra.bestrun = elapsed
-      hackscoreaboard()
+      calcscoreboard()
     end
   end
 end)
@@ -169,7 +169,7 @@ spaghetti.addhook(server.N_SWITCHTEAM, function(info)
   changeteam(info.ci, info.text)
 end)
 
-hackscoreaboard = function()
+calcscoreboard = function()
   for revindex, ci in ipairs(table.sort(map.lf(L"_", iterators.all()), L"(_1.extra.bestrun or 1/0) > (_2.extra.bestrun or 1/0)")) do
     revindex = ci.extra.bestrun and revindex or 0
     ci.extra.hackedflags, ci.state.flags, ci.state.frags = revindex, revindex, ci.extra.bestrun or -1
@@ -181,14 +181,14 @@ spaghetti.addhook("savegamestate", L"_.sc.extra.bestrun = _.ci.extra.bestrun")
 spaghetti.addhook("restoregamestate", L"_.ci.extra.bestrun = _.sc.extra.bestrun")
 spaghetti.addhook("connected", function()
   for ci in iterators.all() do changeteam(ci, ci.team, true) end
-  hackscoreaboard()
+  calcscoreboard()
 end)
 spaghetti.addhook("spawned", function(info)
   local ci = info.ci
   ci.state.flags, ci.state.frags = ci.extra.hackedflags or 0, ci.extra.bestrun or -1
   server.sendresume(ci)
 end)
-spaghetti.addhook("changemap", hackscoreaboard)
+spaghetti.addhook("changemap", calcscoreboard)
 
 
 -- ghost mode: force players to be in CS_SPAWN state, attach an entity without collision box to their position
