@@ -74,6 +74,7 @@ spaghetti.addhook("specstate", function(info) return info.ci.state.state ~= engi
 spaghetti.addhook("damaged", function(info) return info.target.state.state == engine.CS_DEAD and respawn(info.target) end)
 spaghetti.addhook(server.N_SUICIDE, function(info)
   info.skip = true
+  if info.ci.state.state == engine.CS_SPECTATOR then return end
   respawn(info.ci)
 end)
 
@@ -108,13 +109,18 @@ local function resetflag(ci)
 end
 
 
-spaghetti.addhook(server.N_TRYDROPFLAG, function(info) info.skip = true respawn(info.ci) end)
+spaghetti.addhook(server.N_TRYDROPFLAG, function(info)
+  info.skip = true
+  if info.ci.state.state == engine.CS_SPECTATOR then return end
+  respawn(info.ci)
+end)
 spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
 spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
 
 spaghetti.addhook(server.N_TAKEFLAG, function(info)
   info.skip = true
+  if info.ci.state.state == engine.CS_SPECTATOR then return end
   local ownedflag, takeflag = info.ci.extra.flag, info.flag
   if takeflag < 0 or takeflag > 1 or ownedflag == takeflag then return end
   if not ownedflag then
