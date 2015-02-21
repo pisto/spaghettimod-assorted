@@ -47,7 +47,7 @@ for i = 2, #honzikmaps do
   honzikmaps[i] = s
 end
 
-cs.maprotation("collect instacollect efficcollect", table.concat(honzikmaps, " "))
+cs.maprotation("instactf efficctf", table.concat(honzikmaps, " "))
 cs.publicserver = 2
 spaghetti.addhook(server.N_MAPVOTE, function(info)
   if info.skip or info.ci.privilege > 0 or info.text ~= server.smapname then return end
@@ -63,77 +63,150 @@ local collect, putf, sound, iterators, n_client = server.collectmode, require"st
 require"std.notalive"
 
 local suppress = L"_.skip = true"
-spaghetti.addhook("servmodedied", L"_.skip = true")
-spaghetti.addhook(server.N_ADDBOT, L"_.skip = true")
+spaghetti.addhook(server.N_ADDBOT, suppress)
 
-local function removebasetokens(ci)
-  local p
-  for b = 0, collect.bases:length() - 1 do
-    p = p or putf({10, r = 1}, server.N_EXPIRETOKENS)
-    putf(p, b)
-  end
-  return p and engine.sendpacket(ci.clientnum, 1, putf(p, -1):finalize(), -1)
+--never dead
+local function respawn(ci)
+  ci.state:respawn()
+  server.sendspawn(ci)
 end
-local function spawnbasetokens(ci)
-  removebasetokens(ci)
-  local teamid, p = server.collectteambase(ci.team)
-  for b = 0, collect.bases:length() - 1 do
-    b = collect.bases[b]
-    if b.team == teamid then
-      p = p or putf({10, r = 1}, server.N_INITTOKENS, 0, 0, collect.bases:length())
-      putf(p, b.id, b.team, math.random(1, 360), b.o.x * server.DMF, b.o.y * server.DMF, b.o.z * server.DMF)
+spaghetti.addhook("specstate", function(info) return info.ci.state.state ~= engine.CS_SPECTATOR and respawn(info.ci) end)
+spaghetti.addhook("damaged", function(info) return info.target.state.state == engine.CS_DEAD and respawn(info.target) end)
+spaghetti.addhook(server.N_SUICIDE, function(info)
+  info.skip = true
+  respawn(info.ci)
+end)
+
+--flag logic
+
+local ents, vec3 = require"std.ents", require"utils.vec3"
+spaghetti.addhook("entsloaded", function()
+  local teamflags = map.mf(function(i, _, ment)
+    if ment.attr2 ~= 1 and ment.attr2 ~= 2 then return end
+    return ment.attr2, { o = vec3(ment.o), nearestdist = 1/0 }
+  end, ents.enum(server.FLAG))
+  for i, _, ment in ents.enum(server.PLAYERSTART) do
+    local flag = teamflags[ment.attr2]
+    if flag then
+      local dist = flag.o:dist(ment.o)
+      if dist < flag.nearestdist then
+        if flag.nearesti then ents.delent(flag.nearesti) end
+        flag.nearestdist, flag.nearesti = dist, i
+      else ents.delent(i) end
     end
   end
-  return p and engine.sendpacket(ci.clientnum, 1, putf(p, -1):finalize(), -1)
-end
-local function setnumtokens(ci, tot)
-  engine.sendpacket(-1, 1, putf({10, r = 1}, server.N_TAKETOKEN, ci.clientnum, -1, tot):finalize(), -1)
-  ci.state.tokens = tot
-end
-
-spaghetti.addhook("notalive", function(info)
-  info.ci.extra.basetoken = nil
-  setnumtokens(info.ci, 0)
-  spawnbasetokens(info.ci)
-  if info.ci.state.state ~= engine.CS_SPECTATOR then
-    info.ci.state:respawn()
-    server.sendspawn(info.ci)
+  for team, flag in pairs(teamflags) do
+    local i, _, ment = ents.getent(flag.nearesti)
+    ents.editent(i, server.PLAYERSTART, ment.o, ment.attr1, 3 - ment.attr2)
   end
 end)
+spaghetti.addhook("connected", L"_.ci.state.state ~= engine.CS_SPECTATOR and server.sendspawn(_.ci)")
+
+local function resetflag(ci)
+  if not ci.extra.flag then return end
+  engine.sendpacket(ci.clientnum, 1, putf({r = 1}, server.N_RESETFLAG, ci.extra.flag, 0, -1, 0, 0))
+  ci.extra.flag = nil
+end
+
+spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
+spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
+spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag = nil end end)
+
+local hackscoreaboard
+spaghetti.addhook(server.N_TAKEFLAG, suppress)
+spaghetti.addhook(server.N_TRYDROPFLAG, suppress)
+
+
+--hack the scoreboard to show flagrun time
+
+spaghetti.addhook("autoteam", function(info)
+  info.skip = true
+  if info.ci then info.ci.team = "good" end
+end)
+
+local function changeteam(ci, team)
+  team = engine.filtertext(team, false):sub(1, server.MAXTEAMLEN)
+  if team ~= "good" and team ~= "evil" then return end
+  resetflag(ci)
+  local p = putf({10, r = 1})
+  for ci in iterators.all() do putf(p, server.N_SETTEAM, ci.clientnum, team, -1) end
+  engine.sendpacket(ci.clientnum, 1, p:finalize(), -1)
+end
+
+spaghetti.addhook(server.N_SETTEAM, function(info)
+  if info.skip then return end
+  info.skip = true
+  if not info.wi or info.wi.clientnum ~= info.ci.clientnum and info.ci.privilege == server.PRIV_NONE then return end
+  changeteam(info.ci, info.text)
+end)
+
+spaghetti.addhook(server.N_SWITCHTEAM, function(info)
+  if info.skip then return end
+  info.skip = true
+  changeteam(info.ci, info.text)
+end)
+
+hackscoreaboard = function()
+  for revindex, ci in ipairs(table.sort(map.lf(L"_", iterators.all()), L"(_1.extra.bestrun or 1/0) > (_2.extra.bestrun or 1/0)")) do
+    revindex = ci.extra.bestrun and revindex or 0
+    ci.extra.hackedflags, ci.state.flags, ci.state.frags = revindex, revindex, ci.extra.bestrun or -1
+    server.sendresume(ci)
+  end
+end
+
+spaghetti.addhook("savegamestate", L"_.sc.extra.bestrun = _.ci.extra.bestrun")
+spaghetti.addhook("restoregamestate", L"_.ci.extra.bestrun = _.sc.extra.bestrun")
+spaghetti.addhook("connected", hackscoreaboard)
+spaghetti.addhook("spawned", function(info)
+  local ci = info.ci
+  ci.state.flags, ci.state.frags = ci.extra.hackedflags or 0, ci.extra.bestrun or -1
+  server.sendresume(ci)
+end)
+spaghetti.addhook("changemap", function()
+  for ci in iterators.all() do ci.extra.bestrun = nil end
+  hackscoreaboard()
+end)
+
+
+--ghost mode
+
+spaghetti.addhook("dodamage", function(info) info.skip = info.target.clientnum ~= info.actor.clientnum end)
+spaghetti.addhook("damageeffects", function(info)
+  if info.target.clientnum == info.actor.clientnum then return end
+  local push = info.hitpush
+  push.x, push.y, push.z = 0, 0, 0
+end)
+
+local spectators, emptypos = {}, {buf = ('\0'):rep(12)}
+
 spaghetti.addhook("connected", function(info)
-  spawnbasetokens(info.ci)
-  for ci in iterators.players() do if ci.clientnum ~= info.ci.clientnum then
+  if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true
+  else for ci in iterators.players() do if ci.clientnum ~= info.ci.clientnum then
     local p = putf({ 30, r = 1}, server.N_SPAWN)
     server.sendstate(ci.state, p)
     engine.sendpacket(info.ci.clientnum, 1, n_client(p, ci):finalize(), -1)
-  end end
+  end end end
 end)
-spaghetti.addhook("changemap", function(info)
-  for ci in iterators.players() do  
-    ci.extra.basetoken = nil
-    spawnbasetokens(ci)
+
+spaghetti.addhook("specstate", function(info)
+  if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true
+  else
+    spectators[info.ci.clientnum] = nil
+    for ci in iterators.players() do
+      engine.sendpacket(info.ci.clientnum, 0, putf({13, r = 1}, server.N_POS, {uint = ci.clientnum}, emptypos):finalize(), -1)
+    end
   end
 end)
 
-spaghetti.addhook(server.N_TAKETOKEN, function(info)
+spaghetti.addhook("worldstate_pos", function(info)
   info.skip = true
-  if collect.notgotbases or info.ci.state.state ~= engine.CS_ALIVE or info.ci.extra.basetoken or not collect.bases:inrange(info.id) then return end
-  info.ci.extra.basetoken, info.ci.state.tokens = info.id, 1
-  engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_TAKETOKEN, info.ci.clientnum, info.id, 1):finalize(), -1)
-  removebasetokens(info.ci)
-  sound(info.ci, server.S_FLAGPICKUP)
+  local position = info.ci.position.buf
+  local p = engine.enet_packet_create(position, 0)
+  for scn in pairs(spectators) do engine.sendpacket(scn, 0, p, -1) end
+  server.recordpacket(0, position)
 end)
 
-spaghetti.addhook(server.N_DEPOSITTOKENS, function(info)
-  info.skip = true
-  if collect.notgotbases or info.ci.state.state ~= engine.CS_ALIVE or not info.ci.extra.basetoken or info.ci.extra.basetoken == info.id then return end
-  info.ci.extra.basetoken = nil
-  spawnbasetokens(info.ci)
-  sound(info.ci, server.S_FLAGSCORE)
-end)
-
-spaghetti.addhook("worldstate_pos", L"_.skip = true")
-local trackent, ents = require"std.trackent", require"std.ents"
+local trackent = require"std.trackent"
 local function attachghost(ci)
   return ents.active() and trackent.add(ci, function(i, lastpos)
     ents.editent(i, server.MAPMODEL, lastpos.pos, lastpos.yaw, "carrot")
@@ -141,6 +214,7 @@ local function attachghost(ci)
 end
 spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
 spaghetti.addhook("changemap", function() for ci in iterators.clients() do attachghost(ci) end end)
+
 
 --moderation
 
