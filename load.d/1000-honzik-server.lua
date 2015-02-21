@@ -108,7 +108,7 @@ local function resetflag(ci)
 end
 
 
-spaghetti.addhook(server.N_TRYDROPFLAG, function(info) respawn(info.ci) end)
+spaghetti.addhook(server.N_TRYDROPFLAG, function(info) info.skip = true respawn(info.ci) end)
 spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
 spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
@@ -204,17 +204,17 @@ end)
 
 local spectators, emptypos = {}, {buf = ('\0'):rep(13)}
 
-local function disappearothers(viewer)
-  for ci in iterators.players() do if ci.clientnum ~= viewer.clientnum then
+spaghetti.later(900, function()
+  local players = map.sf(L"_.state.state == engine.CS_ALIVE and _ or nil", iterators.players())
+  for viewer in pairs(players) do for vanish in pairs(players) do if vanish.clientnum ~= viewer.clientnum then
     local p = putf({ 30, r = 1}, server.N_SPAWN)
-    server.sendstate(ci.state, p)
-    engine.sendpacket(viewer.clientnum, 1, n_client(p, ci):finalize(), -1)
-  end end
-end
+    server.sendstate(vanish.state, p)
+    engine.sendpacket(viewer.clientnum, 1, n_client(p, vanish):finalize(), -1)
+  end end end
+end, true)
 
 spaghetti.addhook("connected", function(info)
   if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true return end
-  disappearothers(info.ci)
 end)
 
 spaghetti.addhook("specstate", function(info)
@@ -227,12 +227,6 @@ spaghetti.addhook("specstate", function(info)
   end end
   if not p then return end
   engine.sendpacket(info.ci.clientnum, 0, p:finalize(), -1)
-  --need to delay the disappear, because there's no way to ensure order between N_POS and N_SPAWN
-  local ciuuid = info.ci.extra.uuid
-  spaghetti.later(500, function()
-    local ci = uuid.find(ciuuid)
-    return ci and disappearothers(ci)
-  end)
 end)
 
 spaghetti.addhook("worldstate_pos", function(info)
