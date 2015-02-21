@@ -59,11 +59,11 @@ require"std.pm"
 
 --gamemods
 
-local collect, putf, sound, iterators, n_client = server.collectmode, require"std.putf", require"std.sound", require"std.iterators", require"std.n_client"
+local ctf, putf, sound, iterators, n_client = server.ctfmode, require"std.putf", require"std.sound", require"std.iterators", require"std.n_client"
 require"std.notalive"
 
-local suppress = L"_.skip = true"
-spaghetti.addhook(server.N_ADDBOT, suppress)
+spaghetti.addhook(server.N_ADDBOT, L"_.skip = true")
+local hackscoreaboard, attachflagghost, removeflagghost
 
 --never dead
 local function respawn(ci)
@@ -78,7 +78,7 @@ spaghetti.addhook(server.N_SUICIDE, function(info)
 end)
 
 
---flag logic
+--flag logic. Assume only two flags.
 
 --switch spawnpoints, keep only the nearest
 local ents, vec3 = require"std.ents", require"utils.vec3"
@@ -97,30 +97,45 @@ spaghetti.addhook("entsloaded", function()
       else ents.delent(i) end
     end
   end
-  for team, flag in pairs(teamflags) do
-    local i, _, ment = ents.getent(flag.nearesti)
-    ents.editent(i, server.PLAYERSTART, ment.o, ment.attr1, 3 - ment.attr2)
-  end
 end)
 spaghetti.addhook("connected", L"_.ci.state.state ~= engine.CS_SPECTATOR and server.sendspawn(_.ci)") --fixup for spawn on connect
 
 local function resetflag(ci)
   if not ci.extra.flag then return end
-  engine.sendpacket(ci.clientnum, 1, putf({r = 1}, server.N_RESETFLAG, ci.extra.flag, 0, -1, 0, 0))
-  ci.extra.flag = nil
+  engine.sendpacket(ci.clientnum, 1, putf({r = 1}, server.N_RESETFLAG, ci.extra.flag, 0, -1, 0, 0):finalize(), -1)
+  ci.extra.flag, ci.extra.runstart = nil
+  removeflagghost(ci)
 end
 
+
+spaghetti.addhook(server.N_TRYDROPFLAG, function(info) respawn(info.ci) end)
 spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
-spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag = nil end end)
+spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
 
-local hackscoreaboard
-spaghetti.addhook(server.N_TAKEFLAG, suppress)
-spaghetti.addhook(server.N_TRYDROPFLAG, suppress)
+spaghetti.addhook(server.N_TAKEFLAG, function(info)
+  info.skip = true
+  local ownedflag, takeflag = info.ci.extra.flag, info.flag
+  if takeflag < 0 or takeflag > 1 or ownedflag == takeflag then return end
+  if not ownedflag then
+    info.ci.extra.flag, info.ci.extra.runstart = takeflag, server.gamemillis
+    engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_TAKEFLAG, info.ci.clientnum, takeflag, 0):finalize(), -1)
+    attachflagghost(info.ci)
+  else
+    engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_SCOREFLAG, info.ci.clientnum, info.ci.extra.flag, 0, takeflag, 0, -1, server.ctfteamflag(info.ci.team), 0, info.ci.state.flags):finalize(), -1)
+    local elapsed = server.gamemillis - info.ci.extra.runstart
+    info.ci.extra.flag, info.ci.extra.runstart = nil
+    removeflagghost(info.ci)
+    if (info.ci.extra.bestrun or 1/0) > elapsed then
+      info.ci.extra.bestrun = elapsed
+      hackscoreaboard()
+    end
+  end
+end)
 
 
 --[[
-  hack the scoreboard to show flagrun time. on server everyone is good, client sees all in his own team.
+  hack the scoreboard to show flagrun time. client sees all in his own team.
   Use flags to enforce order and show best run millis as frags
 ]]--
 
@@ -129,13 +144,15 @@ spaghetti.addhook("autoteam", function(info)
   if info.ci then info.ci.team = "good" end
 end)
 
-local function changeteam(ci, team)
+local function changeteam(ci, team, refresh)
   team = engine.filtertext(team, false):sub(1, server.MAXTEAMLEN)
-  if team ~= "good" and team ~= "evil" then return end
+  if team ~= "good" and team ~= "evil" or (ci.team == team and not refresh) then return end
+  ci.team = team
   resetflag(ci)
   local p = putf({10, r = 1})
   for ci in iterators.all() do putf(p, server.N_SETTEAM, ci.clientnum, team, -1) end
   engine.sendpacket(ci.clientnum, 1, p:finalize(), -1)
+  return refresh or respawn(ci)
 end
 
 spaghetti.addhook(server.N_SETTEAM, function(info)
@@ -146,6 +163,7 @@ spaghetti.addhook(server.N_SETTEAM, function(info)
 end)
 
 spaghetti.addhook(server.N_SWITCHTEAM, function(info)
+  local skip = info.skip
   if info.skip then return end
   info.skip = true
   changeteam(info.ci, info.text)
@@ -161,16 +179,16 @@ end
 
 spaghetti.addhook("savegamestate", L"_.sc.extra.bestrun = _.ci.extra.bestrun")
 spaghetti.addhook("restoregamestate", L"_.ci.extra.bestrun = _.sc.extra.bestrun")
-spaghetti.addhook("connected", hackscoreaboard)
+spaghetti.addhook("connected", function()
+  for ci in iterators.all() do changeteam(ci, ci.team, true) end
+  hackscoreaboard()
+end)
 spaghetti.addhook("spawned", function(info)
   local ci = info.ci
   ci.state.flags, ci.state.frags = ci.extra.hackedflags or 0, ci.extra.bestrun or -1
   server.sendresume(ci)
 end)
-spaghetti.addhook("changemap", function()
-  for ci in iterators.all() do ci.extra.bestrun = nil end
-  hackscoreaboard()
-end)
+spaghetti.addhook("changemap", hackscoreaboard)
 
 
 -- ghost mode: force players to be in CS_SPAWN state, attach an entity without collision box to their position
@@ -183,7 +201,7 @@ spaghetti.addhook("damageeffects", function(info)
   push.x, push.y, push.z = 0, 0, 0
 end)
 
-local spectators, emptypos = {}, {buf = ('\0'):rep(14)}
+local spectators, emptypos = {}, {buf = ('\0'):rep(13)}
 
 local function disappearothers(viewer)
   for ci in iterators.players() do if ci.clientnum ~= viewer.clientnum then
@@ -204,7 +222,7 @@ spaghetti.addhook("specstate", function(info)
   --clear the virtual position of players so sounds do not get played at random locations
   local p
   for ci in iterators.players() do if ci.clientnum ~= info.ci.clientnum then
-    p = putf(p or {13, r = 1}, server.N_POS, {uint = ci.clientnum}, emptypos)
+    p = putf(p or {13, r = 1}, server.N_POS, {uint = ci.clientnum}, { ci.state.lifesequence % 2 * 8 }, emptypos)
   end end
   if not p then return end
   engine.sendpacket(info.ci.clientnum, 0, p:finalize(), -1)
@@ -232,6 +250,19 @@ local function attachghost(ci)
 end
 spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
 spaghetti.addhook("changemap", function() for ci in iterators.clients() do attachghost(ci) end end)
+
+attachflagghost = function(ci)
+  ci.extra.flagghost = ents.active() and trackent.add(ci, function(i, lastpos)
+    local o = vec3(lastpos.pos)
+    o.z = o.z + 20
+    ents.editent(i, server.MAPMODEL, o, lastpos.yaw, "carrot")
+  end, false, true) or nil
+end
+removeflagghost = function(ci)
+  if not ci.extra.flagghost then return end
+  trackent.remove(ci, ci.extra.flagghost)
+  ci.extra.flagghost = nil
+end
 
 
 --moderation
