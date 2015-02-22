@@ -307,7 +307,7 @@ local function attachghost(ci)
   ci.extra.ghostmodel = ci.extra.ghostmodel or math.random(#ghostmodels)
   ci.extra.ghost = ents.active() and trackent.add(ci, function(i, lastpos)
     local o = vec3(lastpos.pos)
-    o.z = o.z + 8
+    o.z = o.z + 5
     ents.editent(i, server.MAPMODEL, o, lastpos.yaw, ghostmodels[ci.extra.ghostmodel])
   end, false, not ci.extra.showself)
 end
@@ -321,7 +321,7 @@ attachflagghost = function(ci)
   ci.extra.flagghostcolor = ci.extra.flagghostcolor or math.random(0, 0xFFF)
   ci.extra.flagghost = ents.active() and trackent.add(ci, function(i, lastpos)
     local o = vec3(lastpos.pos)
-    o.z = o.z + 20
+    o.z = o.z + 15
     ents.editent(i, server.PARTICLES, o, 0, 200, 80, ci.extra.flagghostcolor)
   end, false, not ci.extra.showself) or nil
 end
