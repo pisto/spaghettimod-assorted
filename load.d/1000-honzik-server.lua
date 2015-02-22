@@ -235,6 +235,8 @@ spaghetti.addhook("specstate", function(info)
   engine.sendpacket(info.ci.clientnum, 0, p:finalize(), -1)
 end)
 
+spaghetti.addhook("clientdisconnect", function(info) spectators[info.ci.clientnum] = nil end)
+
 spaghetti.addhook("worldstate_pos", function(info)
   info.skip = true
   local position = info.ci.position.buf
