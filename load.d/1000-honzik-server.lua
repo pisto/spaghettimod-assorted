@@ -81,6 +81,11 @@ end)
 
 --flag logic. Assume only two flags.
 
+spaghetti.addhook("changemap", function()
+  server.gamelimit = 5 * 60 * 1000;
+  engine.sendpacket(-1, 1, putf({10, r = 1}, server.N_TIMEUP, server.gamelimit / 1000):finalize(), -1)
+end)
+
 --switch spawnpoints, keep only the nearest
 local ents, vec3 = require"std.ents", require"utils.vec3"
 spaghetti.addhook("entsloaded", function()
