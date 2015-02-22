@@ -123,6 +123,17 @@ spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
 spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
 
+local function flagnotice(ci, s, o)
+  for oci in iterators.all() do if ci.clientnum ~= oci.clientnum then
+    engine.sendpacket(oci.clientnum, 1, n_client(putf({2, r = 1}, server.N_SOUND, s, server.N_SOUND, s), oci):finalize(), -1)
+  end end
+  o = vec3(o)
+  o.z = o.z + 8
+  local i = ents.active() and ents.newent(server.PARTICLES, o, 3, 12, ci.extra.flagghostcolor)
+  if not i then return end
+  spaghetti.latergame(300, function() ents.delent(i) end)
+end
+
 spaghetti.addhook(server.N_TAKEFLAG, function(info)
   info.skip = true
   if info.ci.state.state == engine.CS_SPECTATOR then return end
@@ -132,6 +143,7 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
     info.ci.extra.flag, info.ci.extra.runstart = takeflag, server.gamemillis
     engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_TAKEFLAG, info.ci.clientnum, takeflag, 0):finalize(), -1)
     attachflagghost(info.ci)
+    flagnotice(info.ci, server.S_FLAGPICKUP, ctf.flags[takeflag].spawnloc)
   else
     engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_SCOREFLAG, info.ci.clientnum, info.ci.extra.flag, 0, takeflag, 0, -1, server.ctfteamflag(info.ci.team), 0, info.ci.state.flags):finalize(), -1)
     local elapsed = server.gamemillis - info.ci.extra.runstart
@@ -141,6 +153,7 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
       info.ci.extra.bestrun = elapsed
       calcscoreboard()
     end
+    flagnotice(info.ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
   end
 end)
 
