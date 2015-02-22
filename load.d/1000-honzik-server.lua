@@ -246,26 +246,94 @@ spaghetti.addhook("worldstate_pos", function(info)
 end)
 
 local trackent = require"std.trackent"
+
+local ghostmodels = {
+  "aftas/arvores/arp",
+  "carrot",
+  "crow",
+  "dcp/bulb",
+  "dcp/firebowl",
+  "dcp/grass",
+  "dcp/groundlamp",
+  "dcp/hanginlamp",
+  "dcp/insect",
+  "dcp/ivy",
+  "dcp/jumppad2",
+  "dcp/leafs",
+  "dcp/mushroom",
+  "dcp/plant1",
+  "dcp/reed",
+  "dcp/smplant",
+  "dcp/switch2a",
+  "makke/fork",
+  "makke/spoon",
+  "mapmodels/justice/exit-sign",
+  "mapmodels/justice/railings/02",
+  "mapmodels/nieb/plant01",
+  "mapmodels/nieb/plant02",
+  "mapmodels/nieb/sandcastle",
+  "mapmodels/nieb/sign_no-exit",
+  "mapmodels/sitters/gothic/skelet1",
+  "mapmodels/sitters/gothic/skelet2",
+  "mapmodels/sitters/gothic/skelet3",
+  "mapmodels/yves_allaire/e6/e6fanblade/horizontal",
+  "mapmodels/yves_allaire/e6/e6fanblade/vertical",
+  "objects/axe",
+  "objects/bed01",
+  "objects/fire",
+  "objects/lamp01",
+  "objects/lamp02",
+  "objects/lantern02",
+  "objects/med_chand",
+  "objects/millblade",
+  "objects/sign01",
+  "objects/torch",
+  "objects/torch_cold",
+  "objects/well_base",
+  "objects/well_roof",
+  "switch1",
+  "switch2",
+  "vegetation/bush01",
+  "vegetation/tree07",
+  "vegetation/weeds"
+}
+
 local function attachghost(ci)
-  return ents.active() and trackent.add(ci, function(i, lastpos)
-    ents.editent(i, server.MAPMODEL, lastpos.pos, lastpos.yaw, "carrot")
-  end, false, true)
+  ci.extra.ghostmodel = ci.extra.ghostmodel or math.random(#ghostmodels)
+  ci.extra.ghost = ents.active() and trackent.add(ci, function(i, lastpos)
+    local o = vec3(lastpos.pos)
+    o.z = o.z + 8
+    ents.editent(i, server.MAPMODEL, o, lastpos.yaw, ghostmodels[ci.extra.ghostmodel])
+  end, false, not ci.extra.showself)
 end
 spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
-spaghetti.addhook("changemap", function() for ci in iterators.clients() do attachghost(ci) end end)
+spaghetti.addhook("changemap", function() for ci in iterators.clients() do
+  ci.extra.ghost, ci.extra.flagghost = nil
+  attachghost(ci)
+end end)
 
 attachflagghost = function(ci)
+  ci.extra.flagghostcolor = ci.extra.flagghostcolor or math.random(0, 0xFFF)
   ci.extra.flagghost = ents.active() and trackent.add(ci, function(i, lastpos)
     local o = vec3(lastpos.pos)
     o.z = o.z + 20
-    ents.editent(i, server.MAPMODEL, o, lastpos.yaw, "carrot")
-  end, false, true) or nil
+    ents.editent(i, server.PARTICLES, o, 0, 200, 80, ci.extra.flagghostcolor)
+  end, false, not ci.extra.showself) or nil
 end
 removeflagghost = function(ci)
   if not ci.extra.flagghost then return end
   trackent.remove(ci, ci.extra.flagghost)
   ci.extra.flagghost = nil
 end
+
+commands.add("showself", function(info)
+  local ci = info.ci
+  local extra = ci.extra
+  extra.showself = not extra.showself
+  if extra.ghost then trackent.remove(ci, extra.ghost) attachghost(info.ci) end
+  if extra.flagghost then trackent.remove(ci, extra.flagghost) attachflagghost(ci) end
+  return extra.showself and playermsg("You are shown as prop '" .. ghostmodels[ci.extra.ghostmodel] .. "'", ci)
+end, "#showself : toggle displaying of your own replacement prop")
 
 
 --moderation
