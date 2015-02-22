@@ -34,7 +34,7 @@ local nameprotect = require"std.nameprotect"
 local protectdb = nameprotect.on(true)
 protectdb["^pisto$"] = { pisto = { pisto = true } }
 
-cs.serverdesc = "Honzik tests"
+cs.serverdesc = "GHOST FLAGRACE"
 
 cs.lockmaprotation = 2
 cs.maprotationreset()
@@ -436,6 +436,16 @@ end)
 require"std.enetping"
 
 --simple banner
+
+banner = "\n\n\f3GHOST FLAGRACE SERVER\f7, a Trackmania rip-off. Idea by \f2Honzik1\f7. Records coming soon.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#showself\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
+spaghetti.addhook("maploaded", function(info)
+  info.ci.extra.bannershown = true
+  local ciuuid = info.ci.extra.uuid
+  spaghetti.later(1000, function()
+    local ci = uuid.find(ciuuid)
+    return ci and playermsg(banner, ci)
+  end)
+end)
 
 local git = io.popen("echo `git rev-parse --short HEAD` `git show -s --format=%ci`")
 local gitversion = git:read()
