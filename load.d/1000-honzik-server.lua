@@ -126,7 +126,7 @@ spaghetti.addhook(server.N_TRYDROPFLAG, function(info)
 end)
 spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
-spaghetti.addhook("changemap", function(info) for ci in iterators.players() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
+spaghetti.addhook("changemap", function(info) for ci in iterators.all() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
 
 local function flagnotice(ci, s, o)
   for oci in iterators.all() do if ci.clientnum ~= oci.clientnum then
@@ -354,7 +354,7 @@ local function attachghost(ci)
   end, false, not ci.extra.showself)
 end
 spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
-spaghetti.addhook("changemap", function() for ci in iterators.clients() do
+spaghetti.addhook("changemap", function() for ci in iterators.all() do
   ci.extra.ghost, ci.extra.flagghost = nil
   attachghost(ci)
 end end)
