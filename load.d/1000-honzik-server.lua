@@ -179,7 +179,7 @@ local function changeteam(ci, team, refresh)
   local p = putf({10, r = 1})
   for ci in iterators.all() do putf(p, server.N_SETTEAM, ci.clientnum, team, -1) end
   engine.sendpacket(ci.clientnum, 1, p:finalize(), -1)
-  if refresh then return end
+  if refresh or ci.state.state == engine.CS_SPECTATOR then return end
   resetflag(ci)
   respawn(ci)
 end
