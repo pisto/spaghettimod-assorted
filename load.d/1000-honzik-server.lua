@@ -119,6 +119,7 @@ end
 
 
 spaghetti.addhook(server.N_TRYDROPFLAG, function(info)
+  if info.skip then return end
   info.skip = true
   if info.ci.state.state == engine.CS_SPECTATOR then return end
   resetflag(info.ci)
@@ -139,6 +140,7 @@ local function flagnotice(ci, s, o)
 end
 
 spaghetti.addhook(server.N_TAKEFLAG, function(info)
+  if info.skip then return end
   info.skip = true
   if info.ci.state.state == engine.CS_SPECTATOR then return end
   local ownedflag, takeflag = info.ci.extra.flag, info.flag
@@ -386,6 +388,8 @@ abuse.ratelimit(server.N_MASTERMODE, 1/30, 5, L"_.ci.privilege == server.PRIV_NO
 abuse.ratelimit({ server.N_AUTHTRY, server.N_AUTHKICK }, 1/60, 4, L"nil, 'Are you really trying to bruteforce a 192 bits number? Kudos to you!'")
 abuse.ratelimit(server.N_CLIENTPING, 4.5) --no message as it could be cause of network jitter
 abuse.ratelimit(server.N_SERVCMD, 0.5, 10, L"nil, 'Yes I\\'m filtering this too.'")
+abuse.ratelimit(server.N_TRYDROPFLAG, 1/10, 10, L"nil, 'Baaaaahh'")
+abuse.ratelimit(server.N_TAKEFLAG, 1/3, 10, L"nil, 'Beeeehh'")
 
 --prevent masters from annoying players
 local tb = require"utils.tokenbucket"
