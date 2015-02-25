@@ -34,7 +34,7 @@ local nameprotect = require"std.nameprotect"
 local protectdb = nameprotect.on(true)
 protectdb["^pisto$"] = { pisto = { pisto = true } }
 
-cs.serverdesc = "GHOST FLAGRACE"
+cs.serverdesc = "GHOST FLAGRUN"
 
 cs.lockmaprotation = 2
 cs.maprotationreset()
@@ -160,7 +160,13 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
       info.ci.extra.bestrun = elapsed
       calcscoreboard()
     end
-    playermsg("Flagrun completed in \f0" .. elapsed / 1000 .. "\f7 seconds" .. (oldrun and oldrun > elapsed and ", \f3personal best\f7!" or ""), info.ci)
+    local msg = "Flagrun time: \f2" .. elapsed / 1000 .. "\f7 seconds"
+    if oldrun and oldrun ~= elapsed then
+      local delta = elapsed - oldrun
+      msg = msg .. ", " .. (delta < 0 and "\f0-" or "\f3+") .. delta / 1000
+      if delta < 0 then msg = msg .. "\f7, \f0personal best\f7!" end
+    end
+    playermsg(msg, info.ci)
     flagnotice(info.ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
   end
 end)
@@ -223,6 +229,7 @@ spaghetti.addhook("spawned", function(info)
 end)
 spaghetti.addhook("changemap", calcscoreboard)
 
+local position = { "\f01st \f2", "\f02nd \f2", "\f03rd \f2" }
 spaghetti.addhook("intermission", function()
   local classify = table.sort(map.lf(L"_", pick.fz(L"_.extra.bestrun", iterators.all())), L"_1.extra.bestrun < _2.extra.bestrun")
   if #classify == 0 then return end
@@ -230,7 +237,7 @@ spaghetti.addhook("intermission", function()
   for i = 1, 3 do
     if not classify[i] then break end
     local ci = classify[i]
-    msg = msg .. "\n\t\f0" .. server.colorname(ci, nil) .. "\f7: " .. ci.extra.bestrun / 1000
+    msg = msg .. "\n\t" .. position[i] .. server.colorname(ci, nil) .. "\f7: " .. ci.extra.bestrun / 1000 .. " seconds"
   end
   server.sendservmsg(msg)
 end)
@@ -476,7 +483,7 @@ require"std.enetping"
 
 --simple banner
 
-banner = "\n\n\f3GHOST FLAGRACE SERVER\f7, a Trackmania rip-off. Idea by \f2Honzik1\f7. Records coming soon.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#showself\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
+banner = "\n\n\f2FLAGRUN SERVER\f7. Fastest \f3base\f7-to-\f1base\f7 run with flag wins.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#showself\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
 spaghetti.addhook("maploaded", function(info)
   info.ci.extra.bannershown = true
   local ciuuid = info.ci.extra.uuid
