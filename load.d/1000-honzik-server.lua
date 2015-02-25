@@ -103,6 +103,10 @@ spaghetti.addhook("entsloaded", function()
       else ents.delent(i) end
     end
   end
+  for team, ent in pairs(teamflags) do
+    local i, _, ment = ents.getent(ent.nearesti)
+    ents.editent(i, server.PLAYERSTART, ment.o, ment.attr1, 3 - ment.attr2)
+  end
 end)
 spaghetti.addhook("connected", L"_.ci.state.state ~= engine.CS_SPECTATOR and server.sendspawn(_.ci)") --fixup for spawn on connect
 
