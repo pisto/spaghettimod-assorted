@@ -13,7 +13,7 @@ servertag.tag = "honzik"
 local uuid = require"std.uuid"
 
 local fp, L = require"utils.fp", require"utils.lambda"
-local map, range, fold, last, I = fp.map, fp.range, fp.fold, fp.last, fp.I
+local map, range, fold, last, pick, I = fp.map, fp.range, fp.fold, fp.last, fp.pick, fp.I
 local abuse, playermsg, commands = require"std.abuse", require"std.playermsg", require"std.commands"
 
 cs.maxclients = 42
@@ -155,10 +155,12 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
     local elapsed = server.gamemillis - info.ci.extra.runstart
     info.ci.extra.flag, info.ci.extra.runstart = nil
     removeflagghost(info.ci)
-    if (info.ci.extra.bestrun or 1/0) > elapsed then
+    local oldrun = info.ci.extra.bestrun
+    if (oldrun or 1/0) > elapsed then
       info.ci.extra.bestrun = elapsed
       calcscoreboard()
     end
+    playermsg("Flagrun completed in \f0" .. elapsed / 1000 .. "\f7 seconds" .. (oldrun and oldrun > elapsed and ", \f3personal best\f7!" or ""), info.ci)
     flagnotice(info.ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
   end
 end)
@@ -220,6 +222,18 @@ spaghetti.addhook("spawned", function(info)
   server.sendresume(ci)
 end)
 spaghetti.addhook("changemap", calcscoreboard)
+
+spaghetti.addhook("intermission", function()
+  local classify = table.sort(map.lf(L"_", pick.fz(L"_.extra.bestrun", iterators.all())), L"_1.extra.bestrun < _2.extra.bestrun")
+  if #classify == 0 then return end
+  local msg = "\f2Best flagrunners\f7:"
+  for i = 1, 3 do
+    if not classify[i] then break end
+    local ci = classify[i]
+    msg = msg .. "\n\t\f0" .. server.colorname(ci, nil) .. "\f7: " .. ci.extra.bestrun / 1000
+  end
+  server.sendservmsg(msg)
+end)
 
 
 -- ghost mode: force players to be in CS_SPAWN state, attach an entity without collision box to their position
