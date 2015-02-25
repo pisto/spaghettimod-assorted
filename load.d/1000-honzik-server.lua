@@ -63,7 +63,7 @@ local ctf, putf, sound, iterators, n_client = server.ctfmode, require"std.putf",
 require"std.notalive"
 
 spaghetti.addhook(server.N_ADDBOT, L"_.skip = true")
-local calcscoreboard, attachflagghost, removeflagghost
+local calcscoreboard, attachflagghost, removeflagghost, disappear
 
 --never dead
 local function respawn(ci)
@@ -214,6 +214,7 @@ calcscoreboard = function()
     ci.extra.hackedflags, ci.state.flags, ci.state.frags = revindex, revindex, ci.extra.bestrun or -1
     server.sendresume(ci)
   end
+  disappear()
 end
 
 spaghetti.addhook("savegamestate", L"_.sc.extra.bestrun = _.ci.extra.bestrun")
@@ -255,14 +256,16 @@ end)
 
 local spectators, emptypos = {}, {buf = ('\0'):rep(13)}
 
-spaghetti.later(900, function()
+disappear = function()
   local players = map.sf(L"_.state.state == engine.CS_ALIVE and _ or nil", iterators.players())
   for viewer in pairs(players) do for vanish in pairs(players) do if vanish.clientnum ~= viewer.clientnum then
     local p = putf({ 30, r = 1}, server.N_SPAWN)
     server.sendstate(vanish.state, p)
     engine.sendpacket(viewer.clientnum, 1, n_client(p, vanish):finalize(), -1)
   end end end
-end, true)
+end
+
+spaghetti.later(900, disappear, true)
 
 spaghetti.addhook("connected", function(info)
   if info.ci.state.state == engine.CS_SPECTATOR then spectators[info.ci.clientnum] = true return end
