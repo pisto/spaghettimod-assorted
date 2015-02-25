@@ -350,7 +350,7 @@ local function attachghost(ci)
     o.z = o.z + 5
     local eid = ents.mapmodels[ghostmodels[ci.extra.ghostmodel]]
     if eid then ents.editent(i, server.MAPMODEL, o, lastpos.yaw, ghostmodels[ci.extra.ghostmodel])
-    else ents.editent(i, ci.extra.ghostmodel % 2 == 1 and server.RESPAWNPOINT or server.CARROT, o, 0) end
+    else ents.editent(i, server.CARROT, o, 0) end
   end, false, not ci.extra.showself)
 end
 spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
@@ -380,7 +380,7 @@ commands.add("showself", function(info)
   if extra.ghost then trackent.remove(ci, extra.ghost) attachghost(info.ci) end
   if extra.flagghost then trackent.remove(ci, extra.flagghost) attachflagghost(ci) end
   if not extra.showself then return end
-  local prop = ents.mapmodels and ents.mapmodels[ghostmodels[ci.extra.ghostmodel]] and ghostmodels[ci.extra.ghostmodel] or ci.extra.ghostmodel % 2 == 1 and "respawnpoint" or "KAROTTEN!"
+  local prop = ents.mapmodels and ents.mapmodels[ghostmodels[ci.extra.ghostmodel]] and ghostmodels[ci.extra.ghostmodel] or "KAROTTEN!"
   playermsg("You are shown as prop " .. prop, ci)
 end, "#showself : toggle displaying of your own replacement prop")
 
