@@ -163,7 +163,7 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
     local msg = "Flagrun time: \f2" .. elapsed / 1000 .. "\f7 seconds"
     if oldrun and oldrun ~= elapsed then
       local delta = elapsed - oldrun
-      msg = msg .. ", " .. (delta < 0 and "\f0-" or "\f3+") .. delta / 1000
+      msg = msg .. "(" .. (delta < 0 and "\f0" or "\f3+") .. delta / 1000 .. ")"
       if delta < 0 then msg = msg .. "\f7, \f0personal best\f7!" end
     end
     playermsg(msg, info.ci)
