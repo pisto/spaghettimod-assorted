@@ -423,7 +423,7 @@ local function warnspam(packet)
   playermsg(packet.ratelimited, packet.ci)
 end
 map.nv(function(type) spaghetti.addhook(type, warnspam) end,
-  server.N_TEXT, server.N_SAYTEAM, server.N_SWITCHNAME, server.N_MAPVOTE, server.N_SPECTATOR, server.N_MASTERMODE, server.N_AUTHTRY, server.N_AUTHKICK, server.N_CLIENTPING
+  server.N_TEXT, server.N_SAYTEAM, server.N_SWITCHNAME, server.N_MAPVOTE, server.N_SPECTATOR, server.N_MASTERMODE, server.N_AUTHTRY, server.N_AUTHKICK, server.N_CLIENTPING, server.N_TRYDROPFLAG, server.N_TAKEFLAG
 )
 
 --#cheater command
