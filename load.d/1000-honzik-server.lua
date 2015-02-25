@@ -117,7 +117,7 @@ end
 spaghetti.addhook(server.N_TRYDROPFLAG, function(info)
   info.skip = true
   if info.ci.state.state == engine.CS_SPECTATOR then return end
-  respawn(info.ci)
+  resetflag(info.ci)
 end)
 spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
