@@ -126,7 +126,15 @@ spaghetti.addhook(server.N_TRYDROPFLAG, function(info)
 end)
 spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
-spaghetti.addhook("changemap", function(info) for ci in iterators.all() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart = nil end end)
+local best
+spaghetti.addhook("changemap", function(info) for ci in iterators.all() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart, best = nil end end)
+spaghetti.addhook("clientdisconnect", function(info)
+  if not best or best.clientnum ~= info.ci.clientnum then return end
+  best = nil
+  for ci in iterators.all() do
+    if ci.clientnum ~= info.ci.clientnum and (ci.extra.bestrun or 1/0) < (best and best.extra.bestrun or 1/0) then best = ci end
+  end
+end)
 
 local function flagnotice(ci, s, o)
   for oci in iterators.all() do if ci.clientnum ~= oci.clientnum then
@@ -155,19 +163,22 @@ spaghetti.addhook(server.N_TAKEFLAG, function(info)
     local elapsed = server.gamemillis - info.ci.extra.runstart
     info.ci.extra.flag, info.ci.extra.runstart = nil
     removeflagghost(info.ci)
+    flagnotice(info.ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
     local oldrun = info.ci.extra.bestrun
-    if (oldrun or 1/0) > elapsed then
-      info.ci.extra.bestrun = elapsed
-      calcscoreboard()
-    end
     local msg = "Flagrun time: \f2" .. elapsed / 1000 .. "\f7 seconds"
     if oldrun and oldrun ~= elapsed then
       local delta = elapsed - oldrun
       msg = msg .. " (" .. (delta < 0 and "\f0" or "\f3+") .. delta / 1000 .. "\f7)"
-      if delta < 0 then msg = msg .. "\f7, \f0personal best\f7!" end
     end
     playermsg(msg, info.ci)
-    flagnotice(info.ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
+    if not best or best.extra.bestrun > elapsed then
+      local diff = best and elapsed - best.extra.bestrun
+      server.sendservmsg("\f7" .. server.colorname(info.ci, nil) .. " \f6takes the lead\f7! \f2" .. elapsed / 1000 .. "\f7 seconds" .. (diff and " (\f0" .. diff / 1000 .. "\f7)" or ""))
+      best = info.ci
+    end
+    if oldrun and oldrun <= elapsed then return end
+    info.ci.extra.bestrun = elapsed
+    calcscoreboard()
   end
 end)
 
