@@ -208,11 +208,15 @@ spaghetti.addhook(server.N_SWITCHTEAM, function(info)
   changeteam(info.ci, info.text)
 end)
 
+spaghetti.addhook(server.N_PING, L"_.skip = true")
+spaghetti.addhook(server.N_CLIENTPING, L"_.skip = true")
+
 calcscoreboard = function()
   for revindex, ci in ipairs(table.sort(map.lf(L"_", iterators.all()), L"(_1.extra.bestrun or 1/0) > (_2.extra.bestrun or 1/0)")) do
     revindex = ci.extra.bestrun and revindex or 0
-    ci.extra.hackedflags, ci.state.flags, ci.state.frags = revindex, revindex, ci.extra.bestrun or -1
+    ci.state.flags = revindex
     server.sendresume(ci)
+    engine.sendpacket(-1, 1, n_client(putf({10, r = 1}, server.N_CLIENTPING, ci.extra.bestrun or -1), ci):finalize(), -1)
   end
   disappear()
 end
@@ -222,11 +226,6 @@ spaghetti.addhook("restoregamestate", L"_.ci.extra.bestrun = _.sc.extra.bestrun"
 spaghetti.addhook("connected", function()
   for ci in iterators.all() do changeteam(ci, ci.team, true) end
   calcscoreboard()
-end)
-spaghetti.addhook("spawned", function(info)
-  local ci = info.ci
-  ci.state.flags, ci.state.frags = ci.extra.hackedflags or 0, ci.extra.bestrun or -1
-  server.sendresume(ci)
 end)
 spaghetti.addhook("changemap", calcscoreboard)
 
@@ -482,11 +481,9 @@ spaghetti.addhook(server.N_TEXT, function(info)
   sound(info.ci, server.S_HIT, true) sound(info.ci, server.S_HIT, true)
 end)
 
-require"std.enetping"
-
 --simple banner
 
-banner = "\n\n\f2FLAGRUN SERVER\f7. Fastest \f3base\f7-to-\f1base\f7 run with flag wins.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#showself\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
+banner = "\n\n\f2FLAGRUN SERVER\f7. Fastest \f3base\f7-to-\f1base\f7 run with flag wins. Best run is in the ping column.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#showself\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
 spaghetti.addhook("maploaded", function(info)
   info.ci.extra.bannershown = true
   local ciuuid = info.ci.extra.uuid
