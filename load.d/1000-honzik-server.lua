@@ -48,7 +48,7 @@ for i = 2, #honzikmaps do
 end
 
 cs.maprotation("instactf efficctf", table.concat(honzikmaps, " "))
-cs.publicserver = 2
+server.mastermask = server.MM_PUBSERV + server.MM_AUTOAPPROVE
 spaghetti.addhook(server.N_MAPVOTE, function(info)
   if info.skip or info.ci.privilege > 0 or info.text ~= server.smapname then return end
   info.skip = true
