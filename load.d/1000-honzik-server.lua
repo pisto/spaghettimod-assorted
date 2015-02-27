@@ -112,7 +112,7 @@ spaghetti.addhook("connected", L"_.ci.state.state ~= engine.CS_SPECTATOR and ser
 
 local function resetflag(ci)
   if not ci.extra.flag then return end
-  engine.sendpacket(ci.clientnum, 1, putf({r = 1}, server.N_RESETFLAG, ci.extra.flag, 0, -1, 0, 0):finalize(), -1)
+  engine.sendpacket(ci.clientnum, 1, putf({r = 1}, server.N_RESETFLAG, ci.extra.flag, ci.state.lifesequence, -1, 0, 0):finalize(), -1)
   ci.extra.flag, ci.extra.runstart = nil
   removeflagghost(ci)
 end
@@ -124,7 +124,10 @@ spaghetti.addhook(server.N_TRYDROPFLAG, function(info)
   if info.ci.state.state == engine.CS_SPECTATOR then return end
   resetflag(info.ci)
 end)
-spaghetti.addhook("spawned", function(info) resetflag(info.ci) end)
+spaghetti.addhook("spawned", function(info)
+  resetflag(info.ci)
+  engine.sendpacket(info.ci.clientnum, 1, putf({10, r=1}, server.N_INITFLAGS, 0, 0, 2, info.ci.state.lifesequence, -1, -1, 0, 0, info.ci.state.lifesequence, -1, -1, 0, 0):finalize(), -1)
+end)
 spaghetti.addhook("specstate", function(info) return info.ci.state.state == engine.CS_SPECTATOR and resetflag(info.ci) end)
 local best
 spaghetti.addhook("changemap", function(info) for ci in iterators.all() do ci.extra.flag, ci.extra.bestrun, ci.extra.runstart, best = nil end end)
@@ -150,34 +153,37 @@ end
 spaghetti.addhook(server.N_TAKEFLAG, function(info)
   if info.skip then return end
   info.skip = true
-  if info.ci.state.state == engine.CS_SPECTATOR then return end
-  local ownedflag, takeflag = info.ci.extra.flag, info.flag
+  local ci = info.ci
+  local state, extra = ci.state, ci.extra
+  local lfs, cn = state.lifesequence, ci.clientnum
+  if state.state == engine.CS_SPECTATOR or info.version ~= lfs then return end
+  local ownedflag, takeflag = extra.flag, info.flag
   if takeflag < 0 or takeflag > 1 or ownedflag == takeflag then return end
   if not ownedflag then
-    info.ci.extra.flag, info.ci.extra.runstart = takeflag, server.gamemillis
-    engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_TAKEFLAG, info.ci.clientnum, takeflag, 0):finalize(), -1)
-    attachflagghost(info.ci)
-    flagnotice(info.ci, server.S_FLAGPICKUP, ctf.flags[takeflag].spawnloc)
+    extra.flag, extra.runstart = takeflag, server.gamemillis
+    engine.sendpacket(cn, 1, putf({10, r = 1}, server.N_TAKEFLAG, cn, takeflag, lfs):finalize(), -1)
+    attachflagghost(ci)
+    flagnotice(ci, server.S_FLAGPICKUP, ctf.flags[takeflag].spawnloc)
   else
-    engine.sendpacket(info.ci.clientnum, 1, putf({10, r = 1}, server.N_SCOREFLAG, info.ci.clientnum, info.ci.extra.flag, 0, takeflag, 0, -1, server.ctfteamflag(info.ci.team), 0, info.ci.state.flags):finalize(), -1)
-    local elapsed = server.gamemillis - info.ci.extra.runstart
-    info.ci.extra.flag, info.ci.extra.runstart = nil
-    removeflagghost(info.ci)
-    flagnotice(info.ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
-    local oldrun = info.ci.extra.bestrun
+    engine.sendpacket(cn, 1, putf({10, r = 1}, server.N_SCOREFLAG, cn, ownedflag, lfs, takeflag, lfs, -1, server.ctfteamflag(ci.team), 0, state.flags):finalize(), -1)
+    local elapsed = server.gamemillis - extra.runstart
+    extra.flag, extra.runstart = nil
+    removeflagghost(ci)
+    flagnotice(ci, server.S_FLAGSCORE, ctf.flags[takeflag].spawnloc)
+    local oldrun = extra.bestrun
     local msg = "Flagrun time: \f2" .. elapsed / 1000 .. "\f7 seconds"
     if oldrun and oldrun ~= elapsed then
       local delta = elapsed - oldrun
       msg = msg .. " (" .. (delta < 0 and "\f0" or "\f3+") .. delta / 1000 .. "\f7)"
     end
-    playermsg(msg, info.ci)
+    playermsg(msg, ci)
     if not best or best.extra.bestrun > elapsed then
       local diff = best and elapsed - best.extra.bestrun
-      server.sendservmsg("\f7" .. server.colorname(info.ci, nil) .. " \f6takes the lead\f7! \f2" .. elapsed / 1000 .. "\f7 seconds" .. (diff and " (\f0" .. diff / 1000 .. "\f7)" or ""))
-      best = info.ci
+      server.sendservmsg("\f7" .. server.colorname(ci, nil) .. " \f6takes the lead\f7! \f2" .. elapsed / 1000 .. "\f7 seconds" .. (diff and " (\f0" .. diff / 1000 .. "\f7)" or ""))
+      best = ci
     end
     if oldrun and oldrun <= elapsed then return end
-    info.ci.extra.bestrun = elapsed
+    extra.bestrun = elapsed
     calcscoreboard()
   end
 end)
