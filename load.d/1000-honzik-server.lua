@@ -416,13 +416,20 @@ commands.add("setghost", function(info)
   if cn == "" and model == "" and color == "" then
     if not ents.mapmodels then playermsg("No map models list for this map.", info.ci) return end
     playermsg("Available models (\f0green\f7 -> no collision box):", info.ci)
-    for _, mname in ipairs(ents.mapmodels) do playermsg((ghostmodels[mname] and "\f0\t" or "\t") .. mname, info.ci) end
+    local function print(i, mname) playermsg("\t" .. i .. (ghostmodels[mname] and "\f0\t" or "\t") .. mname, info.ci) end
+    if ents.mapmodels[0] then print(0, ents.mapmodels[0]) end
+    for i, mname in ipairs(ents.mapmodels) do print(i, mname) end
     return
   end
+  if (color ~= "" or model ~= "") and info.ci.privilege < server.PRIV_AUTH then playermsg("You lack privileges to change players' ghosts", info.ci) return end
   local tci = cn == "" and info.ci or server.getinfo(tonumber(cn) or -1)
   if not tci then playermsg("Invalid cn " .. cn, info.ci) return end
   if color ~= "" and not tonumber(color) then playermsg("Invalid color " .. color, info.ci) return end
-  if (color ~= "" or model ~= "") and info.ci.privilege < server.PRIV_AUTH then playermsg("You lack privileges to change players' ghosts", info.ci) return end
+  if model ~= "" and tonumber(model) then
+    local model_ = ents.mapmodels and ents.mapmodels[tonumber(model)]
+    if not model_ then playermsg("Model index out of range", info.ci) return end
+    model = model_
+  end
   tci.extra.ghostmodel, tci.extra.flagghostcolor = model ~= "" and model or tci.extra.ghostmodel, color ~= "" and tonumber(color) or tci.extra.flagghostcolor
   local mname = tci.extra.ghostmodel
   if ghostmodels[mname] then mname = "\f0" .. mname end
