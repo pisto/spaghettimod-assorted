@@ -363,7 +363,6 @@ local ghostmodels = {
 }
 
 local function attachghost(ci)
-  ci.extra.ghostmodel = ci.extra.ghostmodel or ghostmodels[math.random(#ghostmodels)]
   ci.extra.ghost = ents.active() and trackent.add(ci, function(i, lastpos)
     local o = vec3(lastpos.pos)
     o.z = o.z + 5
@@ -372,14 +371,17 @@ local function attachghost(ci)
     else ents.editent(i, server.CARROT, o, 0) end
   end, false, not ci.extra.showself, blindcns)
 end
-spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
+spaghetti.addhook("connected", function(info)
+  info.ci.extra.ghostmodel = ghostmodels[math.random(#ghostmodels)]
+  attachghost(info.ci)
+  info.ci.extra.flagghostcolor = math.random(0, 0xFFF)
+end)
 spaghetti.addhook("changemap", function() for ci in iterators.all() do
   ci.extra.ghost, ci.extra.flagghost = nil
   attachghost(ci)
 end end)
 
 attachflagghost = function(ci)
-  ci.extra.flagghostcolor = ci.extra.flagghostcolor or math.random(0, 0xFFF)
   ci.extra.flagghost = ents.active() and trackent.add(ci, function(i, lastpos)
     local o = vec3(lastpos.pos)
     o.z = o.z + 15
