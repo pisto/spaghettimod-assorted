@@ -423,10 +423,10 @@ commands.add("setghost", function(info)
   if not tci then playermsg("Invalid cn " .. cn, info.ci) return end
   if color ~= "" and not tonumber(color) then playermsg("Invalid color " .. color, info.ci) return end
   if (color ~= "" or model ~= "") and info.ci.privilege < server.PRIV_AUTH then playermsg("You lack privileges to change players' ghosts", info.ci) return end
-  info.ci.extra.ghostmodel, info.ci.extra.flagghostcolor = model ~= "" and model or info.ci.extra.ghostmodel, color ~= "" and tonumber(color) or info.ci.extra.flagghostcolor
-  local mname = info.ci.extra.ghostmodel
+  tci.extra.ghostmodel, tci.extra.flagghostcolor = model ~= "" and model or tci.extra.ghostmodel, color ~= "" and tonumber(color) or tci.extra.flagghostcolor
+  local mname = tci.extra.ghostmodel
   if ghostmodels[mname] then mname = "\f0" .. mname end
-  playermsg("Ghost for " .. server.colorname(tci, nil) .. ": " .. mname .. " \f7flag " .. ("0x%03X"):format(info.ci.extra.flagghostcolor), info.ci)
+  playermsg("Ghost for " .. server.colorname(tci, nil) .. ": " .. mname .. " \f7flag " .. ("0x%03X"):format(tci.extra.flagghostcolor), info.ci)
 end, "#setghost [cn] [model [0xcolor]] :\n\tno arguments -> show list of available models for this map\n\tcn -> show model for cn\n\tcn model -> set model for cn\n\tcn model color -> set model and flag flame color for cn")
 
 commands.add("showself", function(info) playermsg("Command #showself is now deprecated, use #ghosts", info.ci) end)
