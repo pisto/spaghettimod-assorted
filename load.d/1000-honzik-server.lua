@@ -361,6 +361,7 @@ local ghostmodels = {
   "vegetation/tree07",
   "vegetation/weeds"
 }
+map.sti(ghostmodels, L"_2", ghostmodels)
 
 local function attachghost(ci)
   ci.extra.ghost = ents.active() and trackent.add(ci, function(i, lastpos)
@@ -409,6 +410,24 @@ commands.add("ghosts", function(info)
     end
   end
 end, "#ghosts <all|others|none> : select which ghosts to show, all -> everybody including yourself, others -> only other players, none -> nobody")
+
+commands.add("setghost", function(info)
+  local cn, model, color = info.args:match("(%d*) *([^ ]*) *([%xx]*) *")
+  if cn == "" and model == "" and color == "" then
+    if not ents.mapmodels then playermsg("No map models list for this map.", info.ci) return end
+    playermsg("Available models (\f0green\f7 -> no collision box):", info.ci)
+    for _, mname in ipairs(ents.mapmodels) do playermsg((ghostmodels[mname] and "\f0\t" or "\t") .. mname, info.ci) end
+    return
+  end
+  local tci = cn == "" and info.ci or server.getinfo(tonumber(cn) or -1)
+  if not tci then playermsg("Invalid cn " .. cn, info.ci) return end
+  if color ~= "" and not tonumber(color) then playermsg("Invalid color " .. color, info.ci) return end
+  if (color ~= "" or model ~= "") and info.ci.privilege < server.PRIV_AUTH then playermsg("You lack privileges to change players' ghosts", info.ci) return end
+  info.ci.extra.ghostmodel, info.ci.extra.flagghostcolor = model ~= "" and model or info.ci.extra.ghostmodel, color ~= "" and tonumber(color) or info.ci.extra.flagghostcolor
+  local mname = info.ci.extra.ghostmodel
+  if ghostmodels[mname] then mname = "\f0" .. mname end
+  playermsg("Ghost for " .. server.colorname(tci, nil) .. ": " .. mname .. " \f7flag " .. ("0x%03X"):format(info.ci.extra.flagghostcolor), info.ci)
+end, "#setghost [cn] [model [0xcolor]] :\n\tno arguments -> show list of available models for this map\n\tcn -> show model for cn\n\tcn model -> set model for cn\n\tcn model color -> set model and flag flame color for cn")
 
 commands.add("showself", function(info) playermsg("Command #showself is now deprecated, use #ghosts", info.ci) end)
 
