@@ -270,7 +270,7 @@ spaghetti.addhook("damageeffects", function(info)
   push.x, push.y, push.z = 0, 0, 0
 end)
 
-local spectators, emptypos = {}, {buf = ('\0'):rep(13)}
+local spectators, blindcns, emptypos = {}, {}, {buf = ('\0'):rep(13)}
 
 disappear = function()
   local players = map.sf(L"_.state.state == engine.CS_ALIVE and _ or nil", iterators.players())
@@ -299,7 +299,7 @@ spaghetti.addhook("specstate", function(info)
   engine.sendpacket(info.ci.clientnum, 0, p:finalize(), -1)
 end)
 
-spaghetti.addhook("clientdisconnect", function(info) spectators[info.ci.clientnum] = nil end)
+spaghetti.addhook("clientdisconnect", function(info) spectators[info.ci.clientnum], blindcns[info.ci.clientnum] = nil end)
 
 spaghetti.addhook("worldstate_pos", function(info)
   info.skip = true
@@ -363,14 +363,14 @@ local ghostmodels = {
 }
 
 local function attachghost(ci)
-  ci.extra.ghostmodel = ci.extra.ghostmodel or math.random(#ghostmodels)
+  ci.extra.ghostmodel = ci.extra.ghostmodel or ghostmodels[math.random(#ghostmodels)]
   ci.extra.ghost = ents.active() and trackent.add(ci, function(i, lastpos)
     local o = vec3(lastpos.pos)
     o.z = o.z + 5
-    local eid = ents.mapmodels[ghostmodels[ci.extra.ghostmodel]]
-    if eid then ents.editent(i, server.MAPMODEL, o, lastpos.yaw, ghostmodels[ci.extra.ghostmodel])
+    local eid = ents.mapmodels[ci.extra.ghostmodel]
+    if eid then ents.editent(i, server.MAPMODEL, o, lastpos.yaw, eid)
     else ents.editent(i, server.CARROT, o, 0) end
-  end, false, not ci.extra.showself)
+  end, false, not ci.extra.showself, blindcns)
 end
 spaghetti.addhook("connected", function(info) attachghost(info.ci) end)
 spaghetti.addhook("changemap", function() for ci in iterators.all() do
@@ -384,7 +384,7 @@ attachflagghost = function(ci)
     local o = vec3(lastpos.pos)
     o.z = o.z + 15
     ents.editent(i, server.PARTICLES, o, 0, 200, 80, ci.extra.flagghostcolor)
-  end, false, not ci.extra.showself) or nil
+  end, false, not ci.extra.showself, blindcns) or nil
 end
 removeflagghost = function(ci)
   if not ci.extra.flagghost then return end
@@ -392,16 +392,23 @@ removeflagghost = function(ci)
   ci.extra.flagghost = nil
 end
 
-commands.add("showself", function(info)
-  local ci = info.ci
-  local extra = ci.extra
-  extra.showself = not extra.showself
-  if extra.ghost then trackent.remove(ci, extra.ghost) attachghost(info.ci) end
-  if extra.flagghost then trackent.remove(ci, extra.flagghost) attachflagghost(ci) end
-  if not extra.showself then return end
-  local prop = ents.mapmodels and ents.mapmodels[ghostmodels[ci.extra.ghostmodel]] and ghostmodels[ci.extra.ghostmodel] or "KAROTTEN!"
-  playermsg("You are shown as prop " .. prop, ci)
-end, "#showself : toggle displaying of your own replacement prop")
+commands.add("ghosts", function(info)
+  local extra = info.ci.extra
+  if info.args == "none" then blindcns[info.ci.clientnum], extra.showself = true
+  elseif info.args == "all" then extra.showself, blindcns[info.ci.clientnum] = true
+  elseif info.args == "others" then blindcns[info.ci.clientnum], extra.showself = nil
+  else playermsg("Missing argument <all|others|none>\n#ghosts <all|others|none> : select which ghosts to show, all -> everybody including yourself, others -> only other players, none -> nobody", info.ci) end
+  for ci in iterators.all() do
+    trackent.remove(ci, ci.extra.ghost)
+    attachghost(ci)
+    if ci.extra.flagghost then
+      trackent.remove(ci, ci.extra.flagghost)
+      attachflagghost(ci)
+    end
+  end
+end, "#ghosts <all|others|none> : select which ghosts to show, all -> everybody including yourself, others -> only other players, none -> nobody")
+
+commands.add("showself", function(info) playermsg("Command #showself is now deprecated, use #ghosts", info.ci) end)
 
 
 --moderation
@@ -500,7 +507,7 @@ end)
 
 --simple banner
 
-banner = "\n\n\f2FLAGRUN SERVER\f7. Fastest \f3base\f7-to-\f1base\f7 run with flag wins. Best run is in the ping column.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#showself\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
+banner = "\n\n\f2FLAGRUN SERVER\f7. Fastest \f3base\f7-to-\f1base\f7 run with flag wins. Best run is in the ping column.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#ghosts all\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
 spaghetti.addhook("maploaded", function(info)
   info.ci.extra.bannershown = true
   local ciuuid = info.ci.extra.uuid
