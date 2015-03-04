@@ -533,6 +533,8 @@ spaghetti.addhook(server.N_TEXT, function(info)
   sound(info.ci, server.S_HIT, true) sound(info.ci, server.S_HIT, true)
 end)
 
+require"std.rcs"
+
 --simple banner
 
 banner = "\n\n\f2FLAGRUN SERVER\f7. Fastest \f3base\f7-to-\f1base\f7 run with flag wins. Best run is in the ping column.\nOther players see you as some \f6random prop\f7, and you won't collide with them.\nUse \f0#ghosts all\f7 and \f0/thirdperson 1\f7 to see your beautiful metamorphosis."
