@@ -178,7 +178,7 @@ end)
 commands.add("spawn", function(info)
   if info.ci.privilege < server.PRIV_ADMIN then playermsg("Insufficient privileges.", info.ci) return end
   local t = engine.getclientinfo(tonumber(info.args) or -1)
-  if not t then playermsg("Invalid cn " .. info.args) return end
+  if not t then playermsg("Invalid cn " .. info.args, info.ci) return end
   if t.state.state ~= engine.CS_SPECTATOR then server.sendspawn(t)
   else playermsg("Cannot spawn a spectator.", info.ci) end
 end, "#spawn <cn>: force a client spawn")
