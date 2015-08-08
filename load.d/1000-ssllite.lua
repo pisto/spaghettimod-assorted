@@ -82,7 +82,7 @@ require"std.getip"
 
 local maploaded, clanwar, tie, delayresume, chatisolate, specall = require"std.maploaded", require"std.clanwar", require"gamemods.tie", require"std.delayresume", require"std.chatisolate", require"std.specall"
 
-local match, manualtie
+local match, manualtie, autospawn
 
 spaghetti.addhook("changemap", function()
   if not match then return end
@@ -93,6 +93,29 @@ spaghetti.addhook("intermission", function()
   if not match then return end
   chatisolate(false)
 end)
+
+local function cleanas(info)
+  local ci = info.ci or info
+  if not ci.extra.autospawn then return end
+  spaghetti.cancel(ci.extra.autospawn)
+  ci.extra.autospawn = nil
+end
+local function doautospawn(ci)
+  if ci.state.state ~= engine.CS_DEAD or not autospawn then return end
+  if autospawn == 0 then server.sendspawn(ci)
+  else ci.extra.autospawn = spaghetti.latergame(autospawn * 1000, function()
+    ci.extra.autospawn = nil
+    server.sendspawn(ci)
+  end) end
+end
+spaghetti.addhook("spawned", cleanas)
+spaghetti.addhook("specstate", function(info)
+  if info.ci.state.state == engine.CS_SPECTATOR then cleanas(info)
+  else doautospawn(info.ci) end
+end)
+spaghetti.addhook("clientdisconnect", cleanas)
+require"std.notalive"
+spaghetti.addhook("notalive", function(info) doautospawn(info.ci) end)
 
 local directip = require"std.directip"
 do
@@ -108,16 +131,17 @@ local function resetmatch()
   match = nil
   clanwar(false)
   tie(false)
-  manualtie = nil
+  manualtie, autospawn = nil
   delayresume.delay = 0
   chatisolate(false)
+  for ci in iterators.clients() do cleanas(ci) end
 end
 
 commands.add("startmatch", function(info)
   if info.ci.privilege < server.PRIV_ADMIN then return playermsg("Only SSL admins can do this.", info.ci) end
   clanwar(true)
   tie(false)
-  manualtie = nil
+  manualtie, autospawn = nil
   delayresume.delay = 5
   if server.interm == 0 then chatisolate(true) end
   server.pausegame(true, nil)
@@ -173,6 +197,7 @@ spaghetti.addhook(server.N_PAUSEGAME, function(info)
   return printwarning and playermsg("\f3Warning, it doesn't seem that the match is ready. \f7Verify with #checkmatch", SSLadmins_z())
 end)
 
+
 --#spawn
 
 commands.add("spawn", function(info)
@@ -202,3 +227,19 @@ commands.add("tie", function(info)
   else msg = msg .. manualtie .. " seconds" end
   playermsg(msg, info.ci)
 end, "#tie [no|#seconds]: show/set tie mode (seconds = 0 for golden goal).")
+
+
+--#autospawn
+
+commands.add("autospawn", function(info)
+  if info.ci.privilege < server.PRIV_ADMIN then playermsg("Insufficient privileges.", info.ci) return end
+  local asseconds = tonumber(info.args)
+  if asseconds and asseconds >= 0 then autospawn = asseconds
+  elseif info.args:lower():match("^ *no *$") then autospawn = nil
+  elseif info.args:match("%S") then playermsg("Unknown autospawn mode " .. info.args, info.ci) return end
+  local msg = "Autospawn mode: "
+  if not autospawn then msg = msg .. "not set"
+  elseif autospawn == 0 then msg = msg .. "immediate"
+  else msg = msg .. autospawn .. " seconds" end
+  playermsg(msg, info.ci)
+end, "#autospawn [no|#seconds]: show/set autospawn mode.")
