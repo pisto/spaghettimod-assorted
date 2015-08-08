@@ -11,26 +11,26 @@
 
 ]]--
 
-local SSLLITEport = os.getenv("SSLLITE")
-if not SSLLITEport then return end
-SSLLITEport = assert(tonumber(SSLLITEport), "Invalid port SSLLITE=" .. SSLLITEport)
-engine.writelog("Applying the SSLLITE configuration on port " .. SSLLITEport)
+local SSLport = os.getenv("SSLLITE")
+if not SSLport then return end
+SSLport = assert(tonumber(SSLport), "Invalid port SSLLITE=" .. SSLport)
+engine.writelog("Applying the SSLLITE configuration on port " .. SSLport)
 
 local servertag = require"utils.servertag"
-servertag.tag = "SSLLITE-" .. SSLLITEport
+servertag.tag = "SSLLITE-" .. SSLport
 
 local fp, L = require"utils.fp", require"utils.lambda"
 local map = fp.map
 local abuse, playermsg, iterators, putf = require"std.abuse", require"std.playermsg", require"std.iterators", require"std.putf"
 
 cs.maxclients = 128
-cs.serverport = SSLLITEport
+cs.serverport = SSLport
 cs.updatemaster = 0
 cs.publicserver = 1
 cs.serverauth = "SSL-admin"
 local auth = require"std.auth"
 table.insert(auth.preauths, "SSL-admin")
-cs.serverdesc = "\f7SSL"
+cs.serverdesc = "\f7SSL " .. SSLport
 cs.ctftkpenalty = 0
 cs.lockmaprotation = 2
 
@@ -122,7 +122,7 @@ commands.add("startmatch", function(info)
   if server.interm == 0 then chatisolate(true) end
   server.pausegame(true, nil)
   match = true
-  playermsg(server.colorname(info.ci, nil) .. "\f3 activated the match mode, tie breaker now off.", SSLadmins_z())
+  playermsg(server.colorname(info.ci, nil) .. "\f3 activated the match mode, tie breaker/autospawn now automatic.", SSLadmins_z())
 end, "#startmatch: setup SSL mode")
 
 spaghetti.addhook("noclients", function()
@@ -133,7 +133,7 @@ commands.add("endmatch", function(info)
   if info.ci.privilege < server.PRIV_ADMIN then return playermsg("Only SSL admins can do this.", info.ci) end
   if not match then return end
   resetmatch()
-  playermsg(server.colorname(info.ci, nil) .. "\f3 has reset the match mode, tie breaker now off.", SSLadmins_z())
+  playermsg(server.colorname(info.ci, nil) .. "\f3 has reset the match mode, tie breaker/autospawn now off.", SSLadmins_z())
 end, "#endmatch: finish SSL mode")
 
 
