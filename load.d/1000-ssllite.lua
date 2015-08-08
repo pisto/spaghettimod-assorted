@@ -189,15 +189,16 @@ end, "#spawn <cn>: force a client spawn")
 commands.add("tie", function(info)
   if info.ci.privilege < server.PRIV_ADMIN then playermsg("Insufficient privileges.", info.ci) return end
   local tieseconds = tonumber(info.args)
-  if tieseconds then
+  if tieseconds and tieseconds >= 0 then
     manualtie = tieseconds
-    tie(tieseconds, false, ("\f6TIE!!\f0 Time left is \f2%d seconds\f0!"):format(manualtie))
+    tie(tieseconds * 1000, false, tieseconds > 0 and ("\f6TIE!!\f0 Time left is \f2%d seconds\f0!"):format(manualtie) or "\f6TIE!!\f0 \f2First\f0 score wins!")
   elseif info.args:lower():match("^ *no *$") then
     manualtie = nil
-    tie(tieseconds, false, "\f6TIE!!\f0 \f2First\f0 score wins!")
+    tie(false)
   elseif info.args:match("%S") then playermsg("Unknown tie mode " .. info.args, info.ci) return end
   local msg = "Tie mode: "
   if not manualtie then msg = msg .. "not set"
+  elseif manualtie == 0 then msg = msg .. "first score"
   else msg = msg .. manualtie .. " seconds" end
   playermsg(msg, info.ci)
-end, "#tie [no|#seconds]: show/set tie mode.")
+end, "#tie [no|#seconds]: show/set tie mode (seconds = 0 for golden goal).")
