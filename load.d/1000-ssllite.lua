@@ -83,7 +83,7 @@ require"std.getip"
 
 local maploaded, clanwar, tie, delayresume, chatisolate, specall, autospawn = require"std.maploaded", require"std.clanwar", require"gamemods.tie", require"std.delayresume", require"std.chatisolate", require"std.specall", require"gamemods.autospawn"
 
-local match, manualtie, autospawntime
+local match, manualtie, manualautospawn
 
 spaghetti.addhook("changemap", function()
   if not match then return end
@@ -110,7 +110,7 @@ local function resetmatch()
   clanwar(false)
   tie(false)
   autospawn(false)
-  manualtie, autospawntime = nil
+  manualtie, manualautospawn = nil
   delayresume.delay = 0
   chatisolate(false)
 end
@@ -120,7 +120,7 @@ commands.add("startmatch", function(info)
   clanwar(true)
   tie(false)
   autospawn(false)
-  manualtie, autospawntime = nil
+  manualtie, manualautospawn = nil
   delayresume.delay = 5
   if server.interm == 0 then chatisolate(true) end
   server.pausegame(true, nil)
@@ -209,17 +209,19 @@ end, "#tie [no|#seconds]: show/set tie mode (seconds = 0 for golden goal).")
 
 
 --#autospawn
-
 commands.add("autospawn", function(info)
   if info.ci.privilege < server.PRIV_ADMIN then playermsg("Insufficient privileges.", info.ci) return end
-  local asseconds = tonumber(info.args)
-  if asseconds and asseconds >= 0 then autospawntime = asseconds
-  elseif info.args:lower():match("^ *no *$") then autospawntime = nil
+  local autospawnseconds = tonumber(info.args)
+  if autospawnseconds and autospawnseconds >= 0 then
+    manualautospawn = autospawnseconds
+    autospawn(manualautospawn  * 1000)
+  elseif info.args:lower():match("^ *no *$") then
+    manualautospawn = false
+    autospawn(false)
   elseif info.args:match("%S") then playermsg("Unknown autospawn mode " .. info.args, info.ci) return end
-  autospawn(autospawntime * 1000)
   local msg = "Autospawn mode: "
-  if not autospawntime then msg = msg .. "not set"
-  elseif autospawntime == 0 then msg = msg .. "immediate"
-  else msg = msg .. autospawntime .. " seconds" end
+  if not manualautospawn then msg = msg .. "off"
+  elseif manualautospawn == 0 then msg = msg .. "immediate"
+  else msg = msg .. manualautospawn .. " seconds" end
   playermsg(msg, info.ci)
 end, "#autospawn [no|#seconds]: show/set autospawn mode.")
