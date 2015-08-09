@@ -124,7 +124,7 @@ commands.add("startmatch", function(info)
   if server.interm == 0 then chatisolate(true) end
   server.pausegame(true, nil)
   match = true
-  playermsg(server.colorname(info.ci, nil) .. "\f3 activated the match mode, tie breaker/autospawn now automatic.", SSLadmins_z())
+  playermsg(server.colorname(info.ci, nil) .. "\f3 activated the match mode, tie breaker/autospawn now off.", SSLadmins_z())
 end, "#startmatch: setup SSL mode")
 
 spaghetti.addhook("noclients", function()
