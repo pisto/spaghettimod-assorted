@@ -26,6 +26,7 @@ local abuse, playermsg, iterators, putf = require"std.abuse", require"std.player
 cs.maxclients = 128
 cs.serverport = SSLport
 cs.updatemaster = 0
+cs.mastername = ""
 cs.publicserver = 1
 cs.serverauth = "SSL-admin"
 local auth = require"std.auth"
