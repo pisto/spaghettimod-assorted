@@ -146,7 +146,7 @@ end, "#endmatch: finish SSL mode")
 local function checkmatch()
   local nodirect = {}
   for ci in iterators.players() do nodirect[ci] = not directip.directclient(ci) or nil end
-  return not next(nodirect), nodirect
+  return not next(nodirect) and not server.m_edit, nodirect
 end
 
 local function checkmatch_broadcast()
@@ -165,6 +165,7 @@ commands.add("checkmatch", function(info)
   if ok then playermsg("\f0SSL match ready.", info.ci) return end
   local msg = "\f3SSL match not ready.\f7"
   if nodirect then msg = msg .. "\nNon direct connection: " .. table.concat(map.lp(L"server.colorname(_, nil)", nodirect), ", ") end
+  if server.m_edit then msg = msg .. "\nMode is coopedit!" end
   playermsg(msg, SSLadmins_z())
 end, "#checkmatch: check if every SSL user is in place")
 
