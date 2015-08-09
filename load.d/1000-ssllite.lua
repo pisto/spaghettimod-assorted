@@ -34,6 +34,7 @@ table.insert(auth.preauths, "SSL-admin")
 cs.serverdesc = "\f7SSL " .. SSLport
 cs.ctftkpenalty = 0
 cs.lockmaprotation = 2
+cs.restrictpausegame = 0
 
 cs.adduser("pisto", "SSL-admin", "+f198cd6e656129b898b7bb8d794211bd768aae54717d57df", "a")
 cs.adduser("Frosty", "SSL-admin", "-d1d22314f8dd21a1e038833cdd74feaf020b8aa7af534725", "a")
