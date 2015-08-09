@@ -112,7 +112,6 @@ local function resetmatch()
   manualtie, autospawntime = nil
   delayresume.delay = 0
   chatisolate(false)
-  for ci in iterators.clients() do cleanas(ci) end
 end
 
 commands.add("startmatch", function(info)
