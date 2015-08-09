@@ -164,7 +164,7 @@ commands.add("checkmatch", function(info)
   local ok, nodirect = checkmatch()
   if ok then playermsg("\f0SSL match ready.", info.ci) return end
   local msg = "\f3SSL match not ready.\f7"
-  if nodirect then msg = msg .. "\nNon direct connection: " .. table.concat(map.lp(L"server.colorname(_, nil)", nodirect), ", ") end
+  if next(nodirect) then msg = msg .. "\nNon direct connection: " .. table.concat(map.lp(L"server.colorname(_, nil)", nodirect), ", ") end
   if server.m_edit then msg = msg .. "\nMode is coopedit!" end
   playermsg(msg, SSLadmins_z())
 end, "#checkmatch: check if every SSL user is in place")
