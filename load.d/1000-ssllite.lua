@@ -245,6 +245,7 @@ end, "#tie [no|#seconds]: show/set tie mode (seconds = 0 for golden goal).")
 
 
 --#autospawn
+
 commands.add("autospawn", function(info)
   if info.ci.privilege < server.PRIV_ADMIN then playermsg("Insufficient privileges.", info.ci) return end
   local autospawnseconds = tonumber(info.args)
