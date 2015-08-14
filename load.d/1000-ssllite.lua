@@ -266,3 +266,10 @@ commands.add("autospawn", function(info)
   else msg = msg .. manualautospawn .. " seconds" end
   playermsg(msg, info.ci)
 end, "#autospawn [no|#seconds]: show/set autospawn mode.")
+
+
+--resume
+
+require"std.settime"
+require"std.setteamscore"
+require"std.setscore"
