@@ -137,13 +137,7 @@ spaghetti.addhook("intermission", function()
 end)
 
 local directip = require"std.directip"
-do
-  local localhost, foundpublic = ip.ip("127.0.0.1").ip
-  for public in pairs(directip.directIP) do
-    if public ~= localhost then foundpublic = public break end
-  end
-if not foundpublic then engine.writelog("Cannot know the public ip, #checkmatch will be useless") end
-end
+if not next(directip.directIP) then engine.writelog("Cannot know the public ip, #checkmatch will be useless") end
 
 local function resetmatch()
   if not match then return end
