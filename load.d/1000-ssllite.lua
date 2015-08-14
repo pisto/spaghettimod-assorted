@@ -35,6 +35,7 @@ cs.serverdesc = "\f7SSL " .. SSLport
 cs.ctftkpenalty = 0
 cs.lockmaprotation = 2
 cs.restrictpausegame = 0
+require("std.flushinterval").set(5)
 
 cs.maprotationreset()
 --copied from data/menus.cfg
